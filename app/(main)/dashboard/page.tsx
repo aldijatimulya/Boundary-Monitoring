@@ -2,6 +2,8 @@ import Topbar from "@/components/Topbar";
 import { supabase } from "@/lib/supabase";
 import { ReportMatrixRow, STATUS_LABEL } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+
 async function getData() {
   const { data: rows } = await supabase
     .from("v_report_matrix_latest")

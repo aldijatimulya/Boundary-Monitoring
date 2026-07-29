@@ -4,6 +4,8 @@ import { supabase } from "@/lib/supabase";
 import { getGeeTileLayers } from "@/lib/gee-layers";
 import { Cluster, ReportMatrixRow, SpatialClusterFeature } from "@/lib/types";
 
+export const dynamic = "force-dynamic";
+
 async function getData() {
   const { data: clusters } = await supabase.from("clusters").select("*").returns<Cluster[]>();
 
