@@ -1,0 +1,72 @@
+"use client";
+
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
+import { BurndownPoint, WeeklyProductivity } from "@/lib/analytics";
+import { format } from "date-fns";
+
+export function BurndownChart({ series }: { series: BurndownPoint[] }) {
+  const chartData = series.map((p) => ({
+    ...p,
+    dateLabel: format(new Date(p.date), "d MMM"),
+  }));
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <XAxis dataKey="dateLabel" tick={{ fontSize: 11, fill: "#64748b" }} />
+        <YAxis tick={{ fontSize: 11, fill: "#64748b" }} width={70} unit=" ha" />
+        <Tooltip
+          formatter={(value: number, name: string) => [
+            `${Number(value).toLocaleString("id-ID")} ha`,
+            name,
+          ]}
+          labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ""}
+        />
+        <Legend wrapperStyle={{ fontSize: 12 }} />
+        <Line
+          type="monotone"
+          dataKey="remainingHa"
+          name="Sisa realisasi (aktual)"
+          stroke="#DC2626"
+          strokeWidth={2}
+          dot={false}
+        />
+        <Line
+          type="monotone"
+          dataKey="idealRemainingHa"
+          name="Ideal (jadwal rencana)"
+          stroke="#94A3B8"
+          strokeWidth={2}
+          strokeDasharray="5 5"
+          dot={false}
+        />
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
+export function ProductivityChart({ data }: { data: WeeklyProductivity[] }) {
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <BarChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <XAxis dataKey="weekLabel" tick={{ fontSize: 11, fill: "#64748b" }} />
+        <YAxis tick={{ fontSize: 11, fill: "#64748b" }} width={60} unit=" ha" />
+        <Tooltip formatter={(value: number) => [`${Number(value).toLocaleString("id-ID")} ha`, "Realisasi minggu ini"]} />
+        <Bar dataKey="incrementHa" name="Realisasi per minggu" fill="#2563EB" radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
