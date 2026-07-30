@@ -1,7 +1,44 @@
-import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, HeadingLevel } from "docx";
+import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, ImageRun, WidthType, HeadingLevel } from "docx";
 import { DailyReport, WeeklyReport, MonthlyReport } from "@/lib/types";
+import { loadReportPhotos } from "@/lib/export/images";
 
 const CLIENT_NAME = "PT Medco E&P South Sumatra Region";
+const MAX_IMG_WIDTH = 420; // px, ditampilkan proporsional dari ukuran asli foto
+
+// Bangun paragraf "Dokumentasi Foto" + tiap foto (satu per baris, proporsional).
+async function buildPhotoParagraphs(urls: string[] | null | undefined): Promise<Paragraph[]> {
+  const photos = await loadReportPhotos(urls);
+  if (photos.length === 0) return [];
+
+  const paragraphs: Paragraph[] = [
+    new Paragraph({ text: "Dokumentasi Foto", heading: HeadingLevel.HEADING_2, spacing: { before: 300, after: 150 } }),
+  ];
+
+  for (const photo of photos) {
+    const width = Math.min(photo.width, MAX_IMG_WIDTH);
+    const height = Math.round((width * photo.height) / photo.width);
+    // docx butuh Buffer/Uint8Array, bukan data URL -- ambil bagian base64-nya saja.
+    const base64 = photo.dataUrl.split(",")[1] ?? "";
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+    paragraphs.push(
+      new Paragraph({
+        spacing: { after: 200 },
+        children: [
+          new ImageRun({
+            data: bytes,
+            transformation: { width, height },
+            type: photo.format === "PNG" ? "png" : "jpg",
+          }),
+        ],
+      })
+    );
+  }
+
+  return paragraphs;
+}
 
 function fieldRow(label: string, value: string) {
   return new TableRow({
@@ -28,7 +65,7 @@ async function saveDoc(doc: Document, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-function buildDocument(title: string, subtitle: string, rows: TableRow[]) {
+function buildDocument(title: string, subtitle: string, rows: TableRow[], photoParagraphs: Paragraph[] = []) {
   return new Document({
     sections: [
       {
@@ -38,6 +75,7 @@ function buildDocument(title: string, subtitle: string, rows: TableRow[]) {
           new Paragraph({ text: title, heading: HeadingLevel.HEADING_1 }),
           new Paragraph({ text: subtitle, spacing: { after: 200 } }),
           new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }),
+          ...photoParagraphs,
           new Paragraph({ text: "", spacing: { before: 400 } }),
           new Paragraph({ text: "Dibuat oleh,\t\t\t\tDisetujui oleh," }),
           new Paragraph({ text: "", spacing: { before: 600 } }),
@@ -68,7 +106,8 @@ export async function exportDailyReportDocx(report: DailyReport) {
     fieldRow("Kesimpulan", report.kesimpulan ?? "-"),
     fieldRow("Rencana besok", report.rencana_besok ?? "-"),
   ];
-  const doc = buildDocument("Laporan Harian Kegiatan Lapangan", `Tanggal: ${report.tanggal}`, rows);
+  const photoParagraphs = await buildPhotoParagraphs(report.foto_urls);
+  const doc = buildDocument("Laporan Harian Kegiatan Lapangan", `Tanggal: ${report.tanggal}`, rows, photoParagraphs);
   await saveDoc(doc, `Laporan-Harian-${report.tanggal}.docx`);
 }
 
@@ -80,10 +119,12 @@ export async function exportWeeklyReportDocx(report: WeeklyReport) {
     fieldRow("Kendala", report.kendala ?? "-"),
     fieldRow("Mitigasi", report.mitigasi ?? "-"),
   ];
+  const photoParagraphs = await buildPhotoParagraphs(report.foto_urls);
   const doc = buildDocument(
     `Laporan Mingguan — Minggu ke-${report.minggu_ke}`,
     `Periode: ${report.periode_mulai} — ${report.periode_selesai}`,
-    rows
+    rows,
+    photoParagraphs
   );
   await saveDoc(doc, `Laporan-Mingguan-Minggu-${report.minggu_ke}.docx`);
 }
@@ -101,10 +142,12 @@ export async function exportMonthlyReportDocx(report: MonthlyReport) {
     fieldRow("Analisis kendala", report.analisis_kendala ?? "-"),
     fieldRow("Proyeksi bulan depan", report.proyeksi_bulan_depan ?? "-"),
   ];
+  const photoParagraphs = await buildPhotoParagraphs(report.lampiran_urls);
   const doc = buildDocument(
     "Laporan Bulanan Progres Proyek",
     `Periode: ${BULAN_NAMA[report.bulan - 1] ?? report.bulan} ${report.tahun}`,
-    rows
+    rows,
+    photoParagraphs
   );
   await saveDoc(doc, `Laporan-Bulanan-${BULAN_NAMA[report.bulan - 1]}-${report.tahun}.docx`);
 }

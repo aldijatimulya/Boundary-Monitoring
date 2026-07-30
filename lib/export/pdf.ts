@@ -1,8 +1,60 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { DailyReport, WeeklyReport, MonthlyReport } from "@/lib/types";
+import { loadReportPhotos } from "@/lib/export/images";
 
 const CLIENT_NAME = "PT Medco E&P South Sumatra Region";
+const PAGE_WIDTH = 210;
+const PAGE_HEIGHT = 297;
+const MARGIN = 14;
+
+// Tempel foto-foto laporan ke PDF, 2 kolom per baris, otomatis pindah halaman
+// kalau ruang tersisa tidak cukup. Dipanggil setelah tabel data utama.
+async function addPhotosSection(doc: jsPDF, startY: number, urls: string[] | null | undefined): Promise<number> {
+  const photos = await loadReportPhotos(urls);
+  if (photos.length === 0) return startY;
+
+  let y = startY;
+  if (y > PAGE_HEIGHT - 60) {
+    doc.addPage();
+    y = MARGIN;
+  }
+
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("Dokumentasi Foto", MARGIN, y);
+  y += 6;
+  doc.setFont("helvetica", "normal");
+
+  const colWidth = (PAGE_WIDTH - MARGIN * 2 - 6) / 2; // 2 kolom, jarak 6mm di tengah
+  const maxImgHeight = 70; // batas tinggi per foto (mm), supaya foto landscape ekstrem tidak kepotong aneh
+
+  for (let i = 0; i < photos.length; i += 2) {
+    const rowPhotos = [photos[i], photos[i + 1]].filter(Boolean);
+    const heights = rowPhotos.map((p) => Math.min((colWidth * p.height) / p.width, maxImgHeight));
+    const rowHeight = Math.max(...heights);
+
+    if (y + rowHeight > PAGE_HEIGHT - MARGIN) {
+      doc.addPage();
+      y = MARGIN;
+    }
+
+    rowPhotos.forEach((photo, col) => {
+      const w = colWidth;
+      const h = Math.min((colWidth * photo.height) / photo.width, maxImgHeight);
+      const x = MARGIN + col * (colWidth + 6);
+      try {
+        doc.addImage(photo.dataUrl, photo.format, x, y, w, h);
+      } catch {
+        // lewati foto yang gagal ditempel (mis. format tidak didukung jsPDF)
+      }
+    });
+
+    y += rowHeight + 6;
+  }
+
+  return y;
+}
 
 function addHeader(doc: jsPDF, title: string, subtitle: string) {
   doc.setFontSize(11);
@@ -30,7 +82,7 @@ function addSignatureBlock(doc: jsPDF, y: number) {
   doc.text("(_________________________)", 120, y + 20);
 }
 
-export function exportDailyReportPDF(report: DailyReport) {
+export async function exportDailyReportPDF(report: DailyReport) {
   const doc = new jsPDF();
   addHeader(doc, "Laporan Harian Kegiatan Lapangan", `Tanggal: ${report.tanggal}`);
 
@@ -56,12 +108,13 @@ export function exportDailyReportPDF(report: DailyReport) {
     ],
   });
 
-  const finalY = (doc as any).lastAutoTable.finalY ?? 44;
-  addSignatureBlock(doc, finalY + 20);
+  const tableEndY = (doc as any).lastAutoTable.finalY ?? 44;
+  const afterPhotosY = await addPhotosSection(doc, tableEndY + 10, report.foto_urls);
+  addSignatureBlock(doc, afterPhotosY + 20);
   doc.save(`Laporan-Harian-${report.tanggal}.pdf`);
 }
 
-export function exportWeeklyReportPDF(report: WeeklyReport) {
+export async function exportWeeklyReportPDF(report: WeeklyReport) {
   const doc = new jsPDF();
   addHeader(
     doc,
@@ -83,8 +136,9 @@ export function exportWeeklyReportPDF(report: WeeklyReport) {
     ],
   });
 
-  const finalY = (doc as any).lastAutoTable.finalY ?? 44;
-  addSignatureBlock(doc, finalY + 20);
+  const tableEndY = (doc as any).lastAutoTable.finalY ?? 44;
+  const afterPhotosY = await addPhotosSection(doc, tableEndY + 10, report.foto_urls);
+  addSignatureBlock(doc, afterPhotosY + 20);
   doc.save(`Laporan-Mingguan-Minggu-${report.minggu_ke}.pdf`);
 }
 
@@ -93,7 +147,7 @@ const BULAN_NAMA = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
-export function exportMonthlyReportPDF(report: MonthlyReport) {
+export async function exportMonthlyReportPDF(report: MonthlyReport) {
   const doc = new jsPDF();
   addHeader(
     doc,
@@ -115,7 +169,8 @@ export function exportMonthlyReportPDF(report: MonthlyReport) {
     ],
   });
 
-  const finalY = (doc as any).lastAutoTable.finalY ?? 44;
-  addSignatureBlock(doc, finalY + 20);
+  const tableEndY = (doc as any).lastAutoTable.finalY ?? 44;
+  const afterPhotosY = await addPhotosSection(doc, tableEndY + 10, report.lampiran_urls);
+  addSignatureBlock(doc, afterPhotosY + 20);
   doc.save(`Laporan-Bulanan-${BULAN_NAMA[report.bulan - 1]}-${report.tahun}.pdf`);
 }
