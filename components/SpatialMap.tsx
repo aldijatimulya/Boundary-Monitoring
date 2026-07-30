@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { MapContainer, TileLayer, GeoJSON, LayersControl, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, GeoJSON, LayersControl, LayerGroup, Popup, useMap } from "react-leaflet";
 import type { Layer, LatLngBoundsExpression } from "leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -57,11 +57,21 @@ export default function SpatialMap({ features, geeLayers }: Props) {
     const status = (feature?.properties?.status as SpatialClusterFeature["status"]) ?? "not_started";
     return {
       color: STATUS_COLOR[status],
-      weight: 2,
+      weight: 3,
       fillColor: STATUS_COLOR[status],
       fillOpacity: 0.35,
     };
   };
+
+  // Garis putih tebal di bawah garis warna status, supaya batas cluster tetap
+  // kelihatan kontras di atas basemap apa pun (termasuk citra satelit hijau,
+  // yang bisa bikin warna status "Selesai" menyatu dengan warna vegetasi).
+  const haloStyle = () => ({
+    color: "#ffffff",
+    weight: 6,
+    opacity: 0.9,
+    fillOpacity: 0,
+  });
 
   const geoJsonCollection = useMemo(
     () => ({
@@ -121,17 +131,22 @@ export default function SpatialMap({ features, geeLayers }: Props) {
           ))}
 
           <LayersControl.Overlay checked name="Batas Cluster">
-            {/* key berubah setiap kali daftar cluster/geometrinya berubah, supaya
-               react-leaflet me-remount layer GeoJSON-nya (GeoJSON tidak otomatis
-               re-render kalau cuma prop `data` yang berubah). */}
-            <GeoJSON
-              key={features.map((f) => f.cluster_id).join(",")}
-              data={geoJsonCollection as any}
-              style={styleFor as any}
-              onEachFeature={onEachFeature}
-            >
-              {null}
-            </GeoJSON>
+            {/* LayerGroup membungkus 2 layer (halo putih + garis warna status)
+               supaya toggle checkbox "Batas Cluster" tetap mengontrol keduanya
+               sekaligus. key berubah setiap kali daftar cluster/geometrinya
+               berubah, supaya react-leaflet me-remount layer GeoJSON-nya
+               (GeoJSON tidak otomatis re-render kalau cuma prop `data` yang berubah). */}
+            <LayerGroup>
+              <GeoJSON key={`halo-${features.map((f) => f.cluster_id).join(",")}`} data={geoJsonCollection as any} style={haloStyle as any} />
+              <GeoJSON
+                key={features.map((f) => f.cluster_id).join(",")}
+                data={geoJsonCollection as any}
+                style={styleFor as any}
+                onEachFeature={onEachFeature}
+              >
+                {null}
+              </GeoJSON>
+            </LayerGroup>
           </LayersControl.Overlay>
         </LayersControl>
 
