@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, GeoJSON, LayersControl, Popup, useMap } from "react-leaflet";
 import type { Layer, LatLngBoundsExpression } from "leaflet";
 import L from "leaflet";
@@ -34,7 +34,7 @@ const STATUS_TEXT: Record<SpatialClusterFeature["status"], string> = {
 function FitToFeatures({ features }: { features: SpatialClusterFeature[] }) {
   const map = useMap();
 
-  useMemo(() => {
+  useEffect(() => {
     if (features.length === 0) return;
     const layer = L.geoJSON(features.map((f) => f.geometry) as any);
     const bounds = layer.getBounds();
@@ -121,7 +121,15 @@ export default function SpatialMap({ features, geeLayers }: Props) {
           ))}
 
           <LayersControl.Overlay checked name="Batas Cluster">
-            <GeoJSON data={geoJsonCollection as any} style={styleFor as any} onEachFeature={onEachFeature}>
+            {/* key berubah setiap kali daftar cluster/geometrinya berubah, supaya
+               react-leaflet me-remount layer GeoJSON-nya (GeoJSON tidak otomatis
+               re-render kalau cuma prop `data` yang berubah). */}
+            <GeoJSON
+              key={features.map((f) => f.cluster_id).join(",")}
+              data={geoJsonCollection as any}
+              style={styleFor as any}
+              onEachFeature={onEachFeature}
+            >
               {null}
             </GeoJSON>
           </LayersControl.Overlay>
