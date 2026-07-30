@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { m2ToHa } from "@/lib/units";
 
 type Props = {
   projectId: string;
@@ -53,8 +54,8 @@ export default function ClusterForm({ projectId, onClose, onSaved }: Props) {
       desa: form.desa || null,
       kecamatan: form.kecamatan || null,
       kabupaten: form.kabupaten || null,
-      luas_pembebasan_ha: Number(form.luas_pembebasan_ha),
-      luas_deliniasi_ha: form.luas_deliniasi_ha ? Number(form.luas_deliniasi_ha) : 0,
+      luas_pembebasan_ha: m2ToHa(form.luas_pembebasan_ha),
+      luas_deliniasi_ha: form.luas_deliniasi_ha ? m2ToHa(form.luas_deliniasi_ha) : 0,
       keterangan: form.keterangan || null,
       geometry,
     });
@@ -108,20 +109,20 @@ export default function ClusterForm({ projectId, onClose, onSaved }: Props) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-sm text-slate-600">Luas pembebasan (ha)</label>
+              <label className="text-sm text-slate-600">Luas pembebasan (m²)</label>
               <input
                 type="number"
-                step="0.01"
+                step="1"
                 value={form.luas_pembebasan_ha}
                 onChange={(e) => setForm({ ...form, luas_pembebasan_ha: e.target.value })}
                 className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
               />
             </div>
             <div>
-              <label className="text-sm text-slate-600">Luas deliniasi (ha)</label>
+              <label className="text-sm text-slate-600">Luas deliniasi (m²)</label>
               <input
                 type="number"
-                step="0.01"
+                step="1"
                 value={form.luas_deliniasi_ha}
                 onChange={(e) => setForm({ ...form, luas_deliniasi_ha: e.target.value })}
                 className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm"

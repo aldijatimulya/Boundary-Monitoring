@@ -7,6 +7,7 @@ import ClusterGeometryForm from "@/components/ClusterGeometryForm";
 import ReportEntryForm from "@/components/ReportEntryForm";
 import { supabase } from "@/lib/supabase";
 import { ReportMatrixRow, STATUS_LABEL, Project, Cluster } from "@/lib/types";
+import { formatM2 } from "@/lib/units";
 
 export default function ReportMatrixPage() {
   const [project, setProject] = useState<Project | null>(null);
@@ -48,11 +49,11 @@ export default function ReportMatrixPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-slate-200 bg-white p-5">
             <p className="text-sm text-slate-500">Total target rekonstruksi</p>
-            <p className="mt-1 text-2xl font-medium">{totalTarget.toLocaleString("id-ID")} ha</p>
+            <p className="mt-1 text-2xl font-medium">{formatM2(totalTarget)} m²</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-5">
             <p className="text-sm text-slate-500">Realisasi rekonstruksi</p>
-            <p className="mt-1 text-2xl font-medium">{totalRealisasi.toLocaleString("id-ID")} ha</p>
+            <p className="mt-1 text-2xl font-medium">{formatM2(totalRealisasi)} m²</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-5">
             <p className="text-sm text-slate-500">Progres proyek</p>
@@ -77,10 +78,10 @@ export default function ReportMatrixPage() {
                 <th className="px-4 py-3 font-normal">Desa</th>
                 <th className="px-4 py-3 font-normal">Kecamatan</th>
                 <th className="px-4 py-3 font-normal">Kabupaten</th>
-                <th className="px-4 py-3 font-normal text-right">Pembebasan (ha)</th>
-                <th className="px-4 py-3 font-normal text-right">Deliniasi (ha)</th>
-                <th className="px-4 py-3 font-normal text-right">Rekonstruksi (ha)</th>
-                <th className="px-4 py-3 font-normal text-right">Selisih (ha)</th>
+                <th className="px-4 py-3 font-normal text-right">Pembebasan (m²)</th>
+                <th className="px-4 py-3 font-normal text-right">Deliniasi (m²)</th>
+                <th className="px-4 py-3 font-normal text-right">Rekonstruksi (m²)</th>
+                <th className="px-4 py-3 font-normal text-right">Selisih (m²)</th>
                 <th className="px-4 py-3 font-normal text-right">% selisih</th>
                 <th className="px-4 py-3 font-normal">Status</th>
                 <th className="px-4 py-3 font-normal text-right"></th>
@@ -109,10 +110,10 @@ export default function ReportMatrixPage() {
                     <td className="px-4 py-2 text-slate-500">{r.desa ?? "-"}</td>
                     <td className="px-4 py-2 text-slate-500">{r.kecamatan ?? "-"}</td>
                     <td className="px-4 py-2 text-slate-500">{r.kabupaten ?? "-"}</td>
-                    <td className="px-4 py-2 text-right">{r.luas_pembebasan_ha.toLocaleString("id-ID")}</td>
-                    <td className="px-4 py-2 text-right">{(r.luas_deliniasi_ha ?? 0).toLocaleString("id-ID")}</td>
-                    <td className="px-4 py-2 text-right">{r.luas_rekonstruksi_ha.toLocaleString("id-ID")}</td>
-                    <td className="px-4 py-2 text-right">{r.selisih_ha.toLocaleString("id-ID")}</td>
+                    <td className="px-4 py-2 text-right">{formatM2(r.luas_pembebasan_ha)}</td>
+                    <td className="px-4 py-2 text-right">{formatM2(r.luas_deliniasi_ha ?? 0)}</td>
+                    <td className="px-4 py-2 text-right">{formatM2(r.luas_rekonstruksi_ha)}</td>
+                    <td className="px-4 py-2 text-right">{formatM2(r.selisih_ha)}</td>
                     <td className="px-4 py-2 text-right">{r.persen_selisih}%</td>
                     <td className="px-4 py-2">
                       <span className={`rounded-full px-2 py-1 text-xs ${status?.className}`}>

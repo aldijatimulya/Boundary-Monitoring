@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { ReportMatrixRow } from "@/lib/types";
+import { formatM2, haToM2, m2ToHa } from "@/lib/units";
 
 type Props = {
   cluster: ReportMatrixRow;
@@ -11,15 +12,16 @@ type Props = {
 };
 
 export default function ReportEntryForm({ cluster, onClose, onSaved }: Props) {
-  const [luas, setLuas] = useState(cluster.luas_rekonstruksi_ha);
+  const [luasM2, setLuasM2] = useState(haToM2(cluster.luas_rekonstruksi_ha));
   const [tanggal, setTanggal] = useState(new Date().toISOString().slice(0, 10));
   const [keterangan, setKeterangan] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const selisih = cluster.luas_pembebasan_ha - luas;
+  const luasHa = m2ToHa(luasM2);
+  const selisihHa = cluster.luas_pembebasan_ha - luasHa;
   const persen =
-    cluster.luas_pembebasan_ha > 0 ? Math.round((selisih / cluster.luas_pembebasan_ha) * 10000) / 100 : 0;
+    cluster.luas_pembebasan_ha > 0 ? Math.round((selisihHa / cluster.luas_pembebasan_ha) * 10000) / 100 : 0;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,7 +29,7 @@ export default function ReportEntryForm({ cluster, onClose, onSaved }: Props) {
     setSaving(true);
     const { error: dbError } = await supabase.from("report_matrix").insert({
       cluster_id: cluster.cluster_id,
-      luas_rekonstruksi_ha: luas,
+      luas_rekonstruksi_ha: luasHa,
       tanggal_update: tanggal,
       keterangan: keterangan || null,
     });
@@ -44,7 +46,7 @@ export default function ReportEntryForm({ cluster, onClose, onSaved }: Props) {
       <form onSubmit={handleSubmit} className="w-full max-w-md rounded-xl bg-white p-6">
         <h2 className="text-base font-medium text-slate-900">Catat update rekonstruksi — {cluster.lokasi}</h2>
         <p className="mt-1 text-xs text-slate-400">
-          Pembebasan tercatat: {cluster.luas_pembebasan_ha.toLocaleString("id-ID")} ha. Update ini akan
+          Pembebasan tercatat: {formatM2(cluster.luas_pembebasan_ha)} m². Update ini akan
           ditambahkan ke histori, bukan menimpa data lama.
         </p>
 
@@ -59,12 +61,12 @@ export default function ReportEntryForm({ cluster, onClose, onSaved }: Props) {
             />
           </div>
           <div>
-            <label className="text-sm text-slate-600">Luas rekonstruksi (ha)</label>
+            <label className="text-sm text-slate-600">Luas rekonstruksi (m²)</label>
             <input
               type="number"
-              step="0.01"
-              value={luas}
-              onChange={(e) => setLuas(Number(e.target.value))}
+              step="1"
+              value={luasM2}
+              onChange={(e) => setLuasM2(Number(e.target.value))}
               className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
             />
           </div>
@@ -82,7 +84,7 @@ export default function ReportEntryForm({ cluster, onClose, onSaved }: Props) {
           <div className="grid grid-cols-2 gap-3 rounded-md bg-slate-50 p-3 text-sm">
             <div>
               <p className="text-slate-500">Selisih</p>
-              <p className="font-medium">{selisih.toLocaleString("id-ID")} ha</p>
+              <p className="font-medium">{formatM2(selisihHa)} m²</p>
             </div>
             <div>
               <p className="text-slate-500">% selisih</p>

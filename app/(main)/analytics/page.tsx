@@ -15,6 +15,7 @@ import {
   ClusterProductivity,
 } from "@/lib/analytics";
 import { format } from "date-fns";
+import { formatM2, haToM2 } from "@/lib/units";
 
 function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -92,7 +93,7 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <MetricCard
                 label="Kecepatan progres"
-                value={velocity ? `${velocity.haPerWeek.toLocaleString("id-ID")} ha/minggu` : "-"}
+                value={velocity ? `${haToM2(velocity.haPerWeek).toLocaleString("id-ID")} m²/minggu` : "-"}
                 sub={
                   velocity
                     ? velocity.basis === "30_hari_terakhir"
@@ -103,8 +104,8 @@ export default function AnalyticsPage() {
               />
               <MetricCard
                 label="Sisa realisasi"
-                value={`${remainingNow.toLocaleString("id-ID")} ha`}
-                sub={`dari total target ${totalTarget.toLocaleString("id-ID")} ha`}
+                value={`${formatM2(remainingNow)} m²`}
+                sub={`dari total target ${formatM2(totalTarget)} m²`}
               />
               <MetricCard
                 label="Estimasi selesai"
@@ -160,8 +161,8 @@ export default function AnalyticsPage() {
                   <tr className="border-b border-slate-100 text-left text-slate-500">
                     <th className="px-5 py-3 font-normal">Cluster</th>
                     <th className="px-5 py-3 text-right font-normal">Progres</th>
-                    <th className="px-5 py-3 text-right font-normal">Kecepatan (ha/minggu)</th>
-                    <th className="px-5 py-3 text-right font-normal">Sisa (ha)</th>
+                    <th className="px-5 py-3 text-right font-normal">Kecepatan (m²/minggu)</th>
+                    <th className="px-5 py-3 text-right font-normal">Sisa (m²)</th>
                     <th className="px-5 py-3 font-normal">Estimasi selesai</th>
                     <th className="px-5 py-3 font-normal">Catatan</th>
                   </tr>
@@ -171,8 +172,8 @@ export default function AnalyticsPage() {
                     <tr key={c.cluster_id} className="border-b border-slate-50">
                       <td className="px-5 py-3 font-medium">{c.name}</td>
                       <td className="px-5 py-3 text-right">{c.persenSelesai}%</td>
-                      <td className="px-5 py-3 text-right">{c.haPerWeek.toLocaleString("id-ID")}</td>
-                      <td className="px-5 py-3 text-right">{c.remainingHa.toLocaleString("id-ID")}</td>
+                      <td className="px-5 py-3 text-right">{formatM2(c.haPerWeek)}</td>
+                      <td className="px-5 py-3 text-right">{formatM2(c.remainingHa)}</td>
                       <td className="px-5 py-3">
                         {c.forecastDate ? format(new Date(c.forecastDate), "d MMM yyyy") : "-"}
                       </td>
