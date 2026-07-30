@@ -202,7 +202,8 @@ left join lateral (
 ) rm on true;
 
 -- Patok report per cluster: ambil update TERBARU tiap cluster + hitung total &
--- persentase patok permanen dari total patok terpasang.
+-- persentase. Persentase = patok permanen dibagi patok SEMENTARA (jumlah titik
+-- yang perlu di-upgrade jadi permanen) -- bukan dibagi total sementara+permanen.
 create view v_patok_report_latest as
 select
   c.id as cluster_id,
@@ -213,20 +214,20 @@ select
   coalesce(pr.jumlah_patok_permanen, 0) as jumlah_patok_permanen,
   coalesce(pr.jumlah_patok_sementara, 0) + coalesce(pr.jumlah_patok_permanen, 0) as total_patok,
   case
-    when coalesce(pr.jumlah_patok_sementara, 0) + coalesce(pr.jumlah_patok_permanen, 0) > 0
-    then round(
-      (coalesce(pr.jumlah_patok_permanen, 0)::numeric /
-        (coalesce(pr.jumlah_patok_sementara, 0) + coalesce(pr.jumlah_patok_permanen, 0))) * 100, 2)
+    when coalesce(pr.jumlah_patok_sementara, 0) > 0
+      then round((coalesce(pr.jumlah_patok_permanen, 0)::numeric / pr.jumlah_patok_sementara) * 100, 2)
+    when coalesce(pr.jumlah_patok_permanen, 0) > 0 then 100
     else 0
   end as persen_permanen,
   case
     when coalesce(pr.jumlah_patok_sementara, 0) + coalesce(pr.jumlah_patok_permanen, 0) = 0 then 'belum_terpasang'
     else 'terpasang'
   end as status,
-  pr.tanggal_update
+  pr.tanggal_update,
+  pr.keterangan
 from clusters c
 left join lateral (
-  select jumlah_patok_sementara, jumlah_patok_permanen, tanggal_update
+  select jumlah_patok_sementara, jumlah_patok_permanen, tanggal_update, keterangan
   from patok_report
   where patok_report.cluster_id = c.id
   order by tanggal_update desc
@@ -312,6 +313,13 @@ create policy "read_own_profile" on profiles for select using (auth.role() = 'au
 
 -- Hanya surveyor/pic_lapangan/admin yang boleh menulis data lapangan
 create policy "write_field_roles" on daily_reports for insert with check (auth.role() = 'authenticated');
+-- BUG di versi awal: policy insert weekly/monthly_reports sempat tidak dibuat,
+-- padahal RLS-nya sudah aktif (default deny-all) -- lihat migration_sprint6_fix_report_rls.sql.
+create policy "write_field_roles" on weekly_reports for insert with check (auth.role() = 'authenticated');
+create policy "write_field_roles" on monthly_reports for insert with check (auth.role() = 'authenticated');
+create policy "update_field_roles" on daily_reports for update using (auth.role() = 'authenticated');
+create policy "update_field_roles" on weekly_reports for update using (auth.role() = 'authenticated');
+create policy "update_field_roles" on monthly_reports for update using (auth.role() = 'authenticated');
 create policy "write_field_roles" on report_matrix for insert with check (auth.role() = 'authenticated');
 create policy "write_patok_report" on patok_report for insert with check (auth.role() = 'authenticated');
 create policy "write_field_roles" on timeline_activities for insert with check (auth.role() = 'authenticated');

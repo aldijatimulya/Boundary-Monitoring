@@ -19,7 +19,10 @@ export default function PatokEntryForm({ cluster, onClose, onSaved }: Props) {
   const [error, setError] = useState("");
 
   const total = sementara + permanen;
-  const persen = total > 0 ? Math.round((permanen / total) * 10000) / 100 : 0;
+  // Persentase = patok permanen dibagi patok sementara (bukan dibagi total) --
+  // "sementara" adalah jumlah titik yang perlu di-upgrade jadi permanen, jadi
+  // persentase ini menunjukkan berapa persen dari titik itu yang sudah permanen.
+  const persen = sementara > 0 ? Math.round((permanen / sementara) * 10000) / 100 : permanen > 0 ? 100 : 0;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -88,7 +91,7 @@ export default function PatokEntryForm({ cluster, onClose, onSaved }: Props) {
               value={keterangan}
               onChange={(e) => setKeterangan(e.target.value)}
               rows={2}
-              placeholder="Cth: pemasangan patok permanen titik 1-10"
+              placeholder="Cth: 1 titik patok sementara belum bisa diganti permanen karena lahan masih sengketa"
               className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
             />
           </div>

@@ -57,6 +57,7 @@ export type PatokReportRow = {
   persen_permanen: number;
   status: "terpasang" | "belum_terpasang";
   tanggal_update: string | null;
+  keterangan: string | null;
 };
 
 export type ReportMatrixRow = {
