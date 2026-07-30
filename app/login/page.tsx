@@ -18,6 +18,10 @@ export default function LoginPage() {
       setError("Email atau kata sandi salah. Coba lagi.");
       return;
     }
+    // router.refresh() penting: memaksa Server Component (mis. dashboard)
+    // di-render ulang di server supaya langsung membaca cookie sesi yang baru
+    // saja dibuat, bukan menampilkan versi cache dari sebelum login.
+    router.refresh();
     router.push("/dashboard");
   }
 

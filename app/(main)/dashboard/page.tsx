@@ -1,5 +1,5 @@
 import Topbar from "@/components/Topbar";
-import { supabase } from "@/lib/supabase";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { ReportMatrixRow, STATUS_LABEL } from "@/lib/types";
 import { formatM2 } from "@/lib/units";
 import { ClusterProgressBarChart, ProgressDonut } from "@/components/DashboardCharts";
@@ -7,6 +7,8 @@ import { ClusterProgressBarChart, ProgressDonut } from "@/components/DashboardCh
 export const dynamic = "force-dynamic";
 
 async function getData() {
+  const supabase = await createServerSupabaseClient();
+
   const { data: rows } = await supabase
     .from("v_report_matrix_latest")
     .select("*")
@@ -16,7 +18,7 @@ async function getData() {
     .from("v_project_progress")
     .select("*")
     .limit(1)
-    .single();
+    .maybeSingle();
 
   return { rows: rows ?? [], progress };
 }

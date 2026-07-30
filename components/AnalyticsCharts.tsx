@@ -21,7 +21,11 @@ export function BurndownChart({ series }: { series: BurndownPoint[] }) {
     ...p,
     dateLabel: format(new Date(p.date), "d MMM"),
     remainingHa: haToM2(p.remainingHa),
-    idealRemainingHa: haToM2(p.idealRemainingHa),
+    // Jangan konversi null jadi 0 -- null berarti tanggal ini di luar rentang
+    // proyek (belum ada tanggal_mulai/tanggal_selesai, atau titik data di luar
+    // rentang itu). Kalau dipaksa 0, garis "jadwal ideal" akan terlihat seperti
+    // sudah selesai 100% padahal datanya memang belum tersedia.
+    idealRemainingHa: p.idealRemainingHa !== null ? haToM2(p.idealRemainingHa) : null,
   }));
 
   return (

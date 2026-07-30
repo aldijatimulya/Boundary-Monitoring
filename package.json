@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.45.4",
     "@tmcw/togeojson": "^7.1.2",
     "date-fns": "^3.6.0",
