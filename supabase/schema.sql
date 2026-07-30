@@ -55,6 +55,19 @@ create table report_matrix (
   created_at timestamptz default now()
 );
 
+-- 4b. PATOK REPORT (progres pemasangan tanda batas per cluster, time-series —
+-- pola sama seperti report_matrix: tiap "Catat update" nambah baris baru).
+create table patok_report (
+  id uuid primary key default uuid_generate_v4(),
+  cluster_id uuid references clusters(id) on delete cascade,
+  tanggal_update date not null default current_date,
+  jumlah_patok_sementara integer not null default 0,
+  jumlah_patok_permanen integer not null default 0,
+  keterangan text,
+  created_by uuid references profiles(id),
+  created_at timestamptz default now()
+);
+
 -- 5. TIMELINE ACTIVITIES (matriks Gantt)
 create table timeline_activities (
   id uuid primary key default uuid_generate_v4(),
@@ -188,6 +201,38 @@ left join lateral (
   limit 1
 ) rm on true;
 
+-- Patok report per cluster: ambil update TERBARU tiap cluster + hitung total &
+-- persentase patok permanen dari total patok terpasang.
+create view v_patok_report_latest as
+select
+  c.id as cluster_id,
+  c.project_id,
+  c.name as lokasi,
+  c.desa, c.kecamatan, c.kabupaten,
+  coalesce(pr.jumlah_patok_sementara, 0) as jumlah_patok_sementara,
+  coalesce(pr.jumlah_patok_permanen, 0) as jumlah_patok_permanen,
+  coalesce(pr.jumlah_patok_sementara, 0) + coalesce(pr.jumlah_patok_permanen, 0) as total_patok,
+  case
+    when coalesce(pr.jumlah_patok_sementara, 0) + coalesce(pr.jumlah_patok_permanen, 0) > 0
+    then round(
+      (coalesce(pr.jumlah_patok_permanen, 0)::numeric /
+        (coalesce(pr.jumlah_patok_sementara, 0) + coalesce(pr.jumlah_patok_permanen, 0))) * 100, 2)
+    else 0
+  end as persen_permanen,
+  case
+    when coalesce(pr.jumlah_patok_sementara, 0) + coalesce(pr.jumlah_patok_permanen, 0) = 0 then 'belum_terpasang'
+    else 'terpasang'
+  end as status,
+  pr.tanggal_update
+from clusters c
+left join lateral (
+  select jumlah_patok_sementara, jumlah_patok_permanen, tanggal_update
+  from patok_report
+  where patok_report.cluster_id = c.id
+  order by tanggal_update desc
+  limit 1
+) pr on true;
+
 -- Progres proyek keseluruhan (dipakai untuk kartu "Progres Proyek" di dashboard)
 create view v_project_progress as
 select
@@ -245,6 +290,7 @@ left join timeline_activities p on p.id = t.predecessor_id;
 alter table profiles enable row level security;
 alter table projects enable row level security;
 alter table clusters enable row level security;
+alter table patok_report enable row level security;
 alter table report_matrix enable row level security;
 alter table timeline_activities enable row level security;
 alter table daily_reports enable row level security;
@@ -256,6 +302,7 @@ alter table documents enable row level security;
 create policy "read_all_authenticated" on projects for select using (auth.role() = 'authenticated');
 create policy "read_all_authenticated" on clusters for select using (auth.role() = 'authenticated');
 create policy "read_all_authenticated" on report_matrix for select using (auth.role() = 'authenticated');
+create policy "read_all_authenticated" on patok_report for select using (auth.role() = 'authenticated');
 create policy "read_all_authenticated" on timeline_activities for select using (auth.role() = 'authenticated');
 create policy "read_all_authenticated" on daily_reports for select using (auth.role() = 'authenticated');
 create policy "read_all_authenticated" on weekly_reports for select using (auth.role() = 'authenticated');
@@ -266,6 +313,7 @@ create policy "read_own_profile" on profiles for select using (auth.role() = 'au
 -- Hanya surveyor/pic_lapangan/admin yang boleh menulis data lapangan
 create policy "write_field_roles" on daily_reports for insert with check (auth.role() = 'authenticated');
 create policy "write_field_roles" on report_matrix for insert with check (auth.role() = 'authenticated');
+create policy "write_patok_report" on patok_report for insert with check (auth.role() = 'authenticated');
 create policy "write_field_roles" on timeline_activities for insert with check (auth.role() = 'authenticated');
 create policy "update_timeline" on timeline_activities for update using (auth.role() = 'authenticated');
 create policy "write_clusters" on clusters for insert with check (auth.role() = 'authenticated');

@@ -42,6 +42,23 @@ export type GeeTileLayer = {
   defaultVisible?: boolean;
 };
 
+// Satu baris siap-pakai untuk Patok Report: pemasangan tanda batas terkini per
+// cluster, dari view v_patok_report_latest (histori insert, bukan update).
+export type PatokReportRow = {
+  cluster_id: string;
+  project_id: string;
+  lokasi: string;
+  desa: string | null;
+  kecamatan: string | null;
+  kabupaten: string | null;
+  jumlah_patok_sementara: number;
+  jumlah_patok_permanen: number;
+  total_patok: number;
+  persen_permanen: number;
+  status: "terpasang" | "belum_terpasang";
+  tanggal_update: string | null;
+};
+
 export type ReportMatrixRow = {
   cluster_id: string;
   project_id: string;
@@ -184,4 +201,6 @@ export const STATUS_LABEL: Record<string, { label: string; className: string }> 
   belum_mulai: { label: "Belum mulai", className: "bg-slate-100 text-slate-600" },
   delay: { label: "Delay", className: "bg-red-100 text-red-700" },
   selesai: { label: "Selesai", className: "bg-emerald-100 text-emerald-700" },
+  terpasang: { label: "Sudah terpasang", className: "bg-emerald-100 text-emerald-700" },
+  belum_terpasang: { label: "Belum terpasang", className: "bg-slate-100 text-slate-600" },
 };

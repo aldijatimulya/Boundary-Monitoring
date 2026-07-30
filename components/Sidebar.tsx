@@ -10,6 +10,7 @@ const NAV_GROUPS = [
       { href: "/dashboard", text: "Dashboard" },
       { href: "/timeline", text: "Timeline" },
       { href: "/report", text: "Reconstruction Report" },
+      { href: "/patok", text: "Patok Report" },
       { href: "/spatial", text: "Spatial Map" },
       { href: "/analytics", text: "Analytics" },
     ],
