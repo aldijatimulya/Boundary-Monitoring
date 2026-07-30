@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import Topbar from "@/components/Topbar";
 import PatokEntryForm from "@/components/PatokEntryForm";
 import { supabase } from "@/lib/supabase";
+import { useProfile } from "@/lib/useProfile";
 import { PatokReportRow, STATUS_LABEL } from "@/lib/types";
 
 export default function PatokReportPage() {
+  const { canEdit } = useProfile();
   const [rows, setRows] = useState<PatokReportRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [entryFor, setEntryFor] = useState<PatokReportRow | null>(null);
@@ -25,7 +27,13 @@ export default function PatokReportPage() {
   const totalSementara = rows.reduce((s, r) => s + Number(r.jumlah_patok_sementara), 0);
   const totalPermanen = rows.reduce((s, r) => s + Number(r.jumlah_patok_permanen), 0);
   const totalPatok = totalSementara + totalPermanen;
-  const persenPermanen = totalPatok > 0 ? Math.round((totalPermanen / totalPatok) * 10000) / 100 : 0;
+  // Sama seperti per-cluster: persentase = permanen dibagi SEMENTARA (bukan total).
+  const persenPermanen =
+    totalSementara > 0
+      ? Math.round((totalPermanen / totalSementara) * 10000) / 100
+      : totalPermanen > 0
+      ? 100
+      : 0;
 
   return (
     <>
@@ -89,9 +97,13 @@ export default function PatokReportPage() {
                     </td>
                     <td className="max-w-xs px-4 py-2 text-slate-500">{r.keterangan || "—"}</td>
                     <td className="px-4 py-2 text-right">
-                      <button onClick={() => setEntryFor(r)} className="text-xs text-brand-blue hover:underline">
-                        Catat update
-                      </button>
+                      {canEdit ? (
+                        <button onClick={() => setEntryFor(r)} className="text-xs text-brand-blue hover:underline">
+                          Catat update
+                        </button>
+                      ) : (
+                        <span className="text-xs text-slate-300">—</span>
+                      )}
                     </td>
                   </tr>
                 );
