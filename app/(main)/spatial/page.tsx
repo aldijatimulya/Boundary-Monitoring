@@ -2,7 +2,7 @@ import Topbar from "@/components/Topbar";
 import SpatialMapWrapper from "@/components/SpatialMapWrapper";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getGeeTileLayers } from "@/lib/gee-layers";
-import { Cluster, ReportMatrixRow, SpatialClusterFeature } from "@/lib/types";
+import { Cluster, ReportMatrixRow, SpatialClusterFeature, PlankLocation } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -16,12 +16,16 @@ async function getData() {
     .select("*")
     .returns<ReportMatrixRow[]>();
 
-  return { clusters: clusters ?? [], statusRows: statusRows ?? [] };
+  const { data: plankRows } = await supabase.from("v_plank_locations").select("*").returns<PlankLocation[]>();
+
+  return { clusters: clusters ?? [], statusRows: statusRows ?? [], plankLocations: plankRows ?? [] };
 }
 
 export default async function SpatialPage() {
-  const { clusters, statusRows } = await getData();
+  const { clusters, statusRows, plankLocations } = await getData();
   const geeLayers = getGeeTileLayers();
+
+  const plankWithGeometry = plankLocations.filter((p) => p.geometry);
 
   const statusByCluster = new Map(statusRows.map((r) => [r.cluster_id, r]));
 
@@ -74,7 +78,7 @@ export default async function SpatialPage() {
         )}
 
         <div style={{ height: "calc(100vh - 220px)" }}>
-          <SpatialMapWrapper features={withGeometry} geeLayers={geeLayers} />
+          <SpatialMapWrapper features={withGeometry} geeLayers={geeLayers} plankLocations={plankWithGeometry} />
         </div>
       </main>
     </>

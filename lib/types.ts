@@ -205,3 +205,53 @@ export const STATUS_LABEL: Record<string, { label: string; className: string }> 
   terpasang: { label: "Sudah terpasang", className: "bg-emerald-100 text-emerald-700" },
   belum_terpasang: { label: "Belum terpasang", className: "bg-slate-100 text-slate-600" },
 };
+
+// ---- Plank Report ----
+export type PlankLocation = {
+  id: string;
+  project_id: string | null;
+  cluster_id: string | null;
+  cluster_nama: string | null;
+  nama_lokasi: string;
+  koordinat_lat: number | null;
+  koordinat_lng: number | null;
+  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon | GeoJSON.Point | null;
+  foto_urls: string[] | null;
+  keterangan: string | null;
+  created_at: string;
+};
+
+// ---- Sosial Report ----
+export type SosialReportRow = {
+  id: string;
+  cluster_id: string;
+  lokasi: string;
+  desa: string | null;
+  kecamatan: string | null;
+  kabupaten: string | null;
+  luas_okupasi_m2: number;
+  jenis_okupasi: string | null;
+  pemilik_lahan: string | null;
+  keterangan: string | null;
+  tanggal_catat: string;
+};
+
+// ---- Inventarisasi Report ----
+export type InventarisasiDetailRow = {
+  cluster_id: string;
+  cluster_nama: string;
+  lokasi_id: string;
+  nama_lokasi: string;
+  pemilik_id: string | null;
+  nama_pemilik: string | null;
+  luas_m2: number | null;
+  keterangan: string | null;
+};
+
+export type InventarisasiSummaryRow = {
+  cluster_id: string;
+  lokasi: string;
+  jumlah_lokasi: number;
+  jumlah_pemilik: number;
+  total_luas_m2: number;
+};

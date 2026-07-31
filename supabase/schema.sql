@@ -220,8 +220,8 @@ select
     else 0
   end as persen_permanen,
   case
-    when coalesce(pr.jumlah_patok_sementara, 0) + coalesce(pr.jumlah_patok_permanen, 0) = 0 then 'belum_terpasang'
-    else 'terpasang'
+    when coalesce(pr.jumlah_patok_permanen, 0) > 0 then 'terpasang'
+    else 'belum_terpasang'
   end as status,
   pr.tanggal_update,
   pr.keterangan
@@ -300,6 +300,30 @@ alter table monthly_reports enable row level security;
 alter table documents enable row level security;
 
 -- Semua user yang sudah login boleh membaca (dashboard bersifat internal tim + Medco viewer)
+-- Helper: role profil user yang sedang login (dari tabel profiles, bukan
+-- auth.role() bawaan Supabase yang cuma tahu "authenticated"/"anon").
+create or replace function current_profile_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select role from profiles where id = auth.uid()
+$$;
+
+-- Helper: apakah user boleh menulis/mengubah data (admin, surveyor, pic_lapangan).
+-- viewer_medco (dan role lain yang tidak terdaftar) selalu false -- read-only.
+create or replace function can_edit()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(current_profile_role() in ('admin', 'surveyor', 'pic_lapangan'), false)
+$$;
+
 create policy "read_all_authenticated" on projects for select using (auth.role() = 'authenticated');
 create policy "read_all_authenticated" on clusters for select using (auth.role() = 'authenticated');
 create policy "read_all_authenticated" on report_matrix for select using (auth.role() = 'authenticated');
@@ -311,24 +335,23 @@ create policy "read_all_authenticated" on monthly_reports for select using (auth
 create policy "read_all_authenticated" on documents for select using (auth.role() = 'authenticated');
 create policy "read_own_profile" on profiles for select using (auth.role() = 'authenticated');
 
--- Hanya surveyor/pic_lapangan/admin yang boleh menulis data lapangan
-create policy "write_field_roles" on daily_reports for insert with check (auth.role() = 'authenticated');
--- BUG di versi awal: policy insert weekly/monthly_reports sempat tidak dibuat,
--- padahal RLS-nya sudah aktif (default deny-all) -- lihat migration_sprint6_fix_report_rls.sql.
-create policy "write_field_roles" on weekly_reports for insert with check (auth.role() = 'authenticated');
-create policy "write_field_roles" on monthly_reports for insert with check (auth.role() = 'authenticated');
-create policy "update_field_roles" on daily_reports for update using (auth.role() = 'authenticated');
-create policy "update_field_roles" on weekly_reports for update using (auth.role() = 'authenticated');
-create policy "update_field_roles" on monthly_reports for update using (auth.role() = 'authenticated');
-create policy "write_field_roles" on report_matrix for insert with check (auth.role() = 'authenticated');
-create policy "write_patok_report" on patok_report for insert with check (auth.role() = 'authenticated');
-create policy "write_field_roles" on timeline_activities for insert with check (auth.role() = 'authenticated');
-create policy "update_timeline" on timeline_activities for update using (auth.role() = 'authenticated');
-create policy "write_clusters" on clusters for insert with check (auth.role() = 'authenticated');
-create policy "update_clusters" on clusters for update using (auth.role() = 'authenticated');
-create policy "write_projects" on projects for insert with check (auth.role() = 'authenticated');
-create policy "write_documents" on documents for insert with check (auth.role() = 'authenticated');
-create policy "delete_documents" on documents for delete using (auth.role() = 'authenticated');
+-- Hanya role admin/surveyor/pic_lapangan (can_edit()) yang boleh menulis data
+-- lapangan -- viewer_medco cuma bisa baca (lihat policy select di atas).
+create policy "write_field_roles" on daily_reports for insert with check (can_edit());
+create policy "write_field_roles" on weekly_reports for insert with check (can_edit());
+create policy "write_field_roles" on monthly_reports for insert with check (can_edit());
+create policy "update_field_roles" on daily_reports for update using (can_edit());
+create policy "update_field_roles" on weekly_reports for update using (can_edit());
+create policy "update_field_roles" on monthly_reports for update using (can_edit());
+create policy "write_field_roles" on report_matrix for insert with check (can_edit());
+create policy "write_patok_report" on patok_report for insert with check (can_edit());
+create policy "write_field_roles" on timeline_activities for insert with check (can_edit());
+create policy "update_timeline" on timeline_activities for update using (can_edit());
+create policy "write_clusters" on clusters for insert with check (can_edit());
+create policy "update_clusters" on clusters for update using (can_edit());
+create policy "write_projects" on projects for insert with check (can_edit());
+create policy "write_documents" on documents for insert with check (can_edit());
+create policy "delete_documents" on documents for delete using (can_edit());
 
 -- =========================================================
 -- STORAGE: bucket untuk dokumentasi foto laporan
@@ -339,7 +362,7 @@ on conflict (id) do nothing;
 
 create policy "authenticated_upload_report_photos"
 on storage.objects for insert
-with check (bucket_id = 'report-photos' and auth.role() = 'authenticated');
+with check (bucket_id = 'report-photos' and can_edit());
 
 create policy "public_read_report_photos"
 on storage.objects for select
@@ -347,7 +370,7 @@ using (bucket_id = 'report-photos');
 
 create policy "authenticated_delete_report_photos"
 on storage.objects for delete
-using (bucket_id = 'report-photos' and auth.role() = 'authenticated');
+using (bucket_id = 'report-photos' and can_edit());
 
 -- Bucket untuk Document Center (SHP/DXF/PDF/Excel/foto/drone)
 insert into storage.buckets (id, name, public)
@@ -356,7 +379,7 @@ on conflict (id) do nothing;
 
 create policy "authenticated_upload_documents"
 on storage.objects for insert
-with check (bucket_id = 'documents' and auth.role() = 'authenticated');
+with check (bucket_id = 'documents' and can_edit());
 
 create policy "public_read_documents"
 on storage.objects for select
@@ -364,7 +387,155 @@ using (bucket_id = 'documents');
 
 create policy "authenticated_delete_documents"
 on storage.objects for delete
-using (bucket_id = 'documents' and auth.role() = 'authenticated');
+using (bucket_id = 'documents' and can_edit());
 
 -- Catatan: policy di atas adalah baseline. Perketat sesuai kebutuhan role
 -- (misal admin-only untuk update/delete) setelah modul auth berjalan di Sprint 1.
+-- Satu baris = satu lokasi plank (papan tanda batas) yang sudah dipasang.
+-- Beda dengan clusters (yang merepresentasikan batas WILAYAH), plank_locations
+-- ini titik/area kecil spesifik tempat plank berdiri -- bisa banyak per
+-- cluster, bisa juga tidak terhubung ke cluster manapun.
+-- =========================================================
+create table plank_locations (
+  id uuid primary key default uuid_generate_v4(),
+  project_id uuid references projects(id),
+  cluster_id uuid references clusters(id) on delete set null,
+  nama_lokasi text not null,
+  koordinat_lat numeric,
+  koordinat_lng numeric,
+  -- GeoJSON Point/Polygon dari upload KML/GeoJSON (opsional) -- disinkronkan
+  -- ke Spatial Map sebagai layer terpisah "Lokasi Plank".
+  geometry jsonb,
+  foto_urls text[],
+  keterangan text,
+  created_by uuid references profiles(id),
+  created_at timestamptz default now()
+);
+
+create view v_plank_locations as
+select
+  p.id,
+  p.project_id,
+  p.cluster_id,
+  c.name as cluster_nama,
+  p.nama_lokasi,
+  p.koordinat_lat,
+  p.koordinat_lng,
+  p.geometry,
+  p.foto_urls,
+  p.keterangan,
+  p.created_at
+from plank_locations p
+left join clusters c on c.id = p.cluster_id
+order by p.created_at desc;
+
+alter table plank_locations enable row level security;
+create policy "read_all_authenticated" on plank_locations for select using (auth.role() = 'authenticated');
+create policy "write_plank_locations" on plank_locations for insert with check (can_edit());
+create policy "update_plank_locations" on plank_locations for update using (can_edit());
+create policy "delete_plank_locations" on plank_locations for delete using (can_edit());
+
+-- =========================================================
+-- 2. SOSIAL REPORT
+-- Satu baris = satu kasus okupasi/permasalahan sosial di suatu cluster.
+-- Beda dengan report_matrix/patok_report (yang ambil update TERBARU saja),
+-- di sini SEMUA baris ditampilkan -- satu cluster wajar punya banyak kasus
+-- okupasi berbeda sekaligus (bukan riwayat yang saling menimpa).
+-- =========================================================
+create table sosial_report (
+  id uuid primary key default uuid_generate_v4(),
+  cluster_id uuid references clusters(id) on delete cascade,
+  luas_okupasi_m2 numeric(12,2) not null default 0,
+  jenis_okupasi text,
+  pemilik_lahan text,
+  keterangan text,
+  tanggal_catat date not null default current_date,
+  created_by uuid references profiles(id),
+  created_at timestamptz default now()
+);
+
+create view v_sosial_report as
+select
+  s.id,
+  s.cluster_id,
+  c.name as lokasi,
+  c.desa, c.kecamatan, c.kabupaten,
+  s.luas_okupasi_m2,
+  s.jenis_okupasi,
+  s.pemilik_lahan,
+  s.keterangan,
+  s.tanggal_catat
+from sosial_report s
+join clusters c on c.id = s.cluster_id
+order by s.tanggal_catat desc, s.created_at desc;
+
+alter table sosial_report enable row level security;
+create policy "read_all_authenticated" on sosial_report for select using (auth.role() = 'authenticated');
+create policy "write_sosial_report" on sosial_report for insert with check (can_edit());
+create policy "update_sosial_report" on sosial_report for update using (can_edit());
+create policy "delete_sosial_report" on sosial_report for delete using (can_edit());
+
+-- =========================================================
+-- 3. INVENTARISASI REPORT
+-- Cluster -> banyak Lokasi (mis. "SWF 1", "SWF 2"...) -> banyak Pemilik lahan
+-- per lokasi, masing-masing dengan luasannya sendiri (m2). Total luasan per
+-- cluster = rekap otomatis dari seluruh pemilik di seluruh lokasi cluster itu.
+-- =========================================================
+create table inventarisasi_lokasi (
+  id uuid primary key default uuid_generate_v4(),
+  cluster_id uuid references clusters(id) on delete cascade,
+  nama_lokasi text not null,
+  created_by uuid references profiles(id),
+  created_at timestamptz default now()
+);
+
+create table inventarisasi_pemilik (
+  id uuid primary key default uuid_generate_v4(),
+  lokasi_id uuid references inventarisasi_lokasi(id) on delete cascade,
+  nama_pemilik text not null,
+  luas_m2 numeric(12,2) not null default 0,
+  keterangan text,
+  created_by uuid references profiles(id),
+  created_at timestamptz default now()
+);
+
+-- Detail gabungan lokasi + pemilik, siap dikelompokkan di sisi aplikasi
+-- (per cluster -> per lokasi -> daftar pemilik).
+create view v_inventarisasi_detail as
+select
+  c.id as cluster_id,
+  c.name as cluster_nama,
+  il.id as lokasi_id,
+  il.nama_lokasi,
+  ip.id as pemilik_id,
+  ip.nama_pemilik,
+  ip.luas_m2,
+  ip.keterangan
+from inventarisasi_lokasi il
+join clusters c on c.id = il.cluster_id
+left join inventarisasi_pemilik ip on ip.lokasi_id = il.id
+order by c.name, il.nama_lokasi, ip.nama_pemilik;
+
+-- Rekap total per cluster -- dipakai untuk kartu ringkasan di halaman.
+create view v_inventarisasi_summary as
+select
+  c.id as cluster_id,
+  c.name as lokasi,
+  count(distinct il.id) as jumlah_lokasi,
+  count(ip.id) as jumlah_pemilik,
+  coalesce(sum(ip.luas_m2), 0) as total_luas_m2
+from clusters c
+left join inventarisasi_lokasi il on il.cluster_id = c.id
+left join inventarisasi_pemilik ip on ip.lokasi_id = il.id
+group by c.id, c.name;
+
+alter table inventarisasi_lokasi enable row level security;
+create policy "read_all_authenticated" on inventarisasi_lokasi for select using (auth.role() = 'authenticated');
+create policy "write_inventarisasi_lokasi" on inventarisasi_lokasi for insert with check (can_edit());
+create policy "delete_inventarisasi_lokasi" on inventarisasi_lokasi for delete using (can_edit());
+
+alter table inventarisasi_pemilik enable row level security;
+create policy "read_all_authenticated" on inventarisasi_pemilik for select using (auth.role() = 'authenticated');
+create policy "write_inventarisasi_pemilik" on inventarisasi_pemilik for insert with check (can_edit());
+create policy "update_inventarisasi_pemilik" on inventarisasi_pemilik for update using (can_edit());
+create policy "delete_inventarisasi_pemilik" on inventarisasi_pemilik for delete using (can_edit());

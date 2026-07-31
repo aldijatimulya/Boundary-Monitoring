@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { GeeTileLayer, SpatialClusterFeature } from "@/lib/types";
+import { GeeTileLayer, SpatialClusterFeature, PlankLocation } from "@/lib/types";
 
 // Leaflet mengakses `window`/`document` saat modul di-load, jadi wajib
 // di-render hanya di client (ssr: false). Ini tidak bisa dilakukan langsung
@@ -19,8 +19,9 @@ const SpatialMap = dynamic(() => import("@/components/SpatialMap"), {
 type Props = {
   features: SpatialClusterFeature[];
   geeLayers: GeeTileLayer[];
+  plankLocations?: PlankLocation[];
 };
 
-export default function SpatialMapWrapper({ features, geeLayers }: Props) {
-  return <SpatialMap features={features} geeLayers={geeLayers} />;
+export default function SpatialMapWrapper({ features, geeLayers, plankLocations = [] }: Props) {
+  return <SpatialMap features={features} geeLayers={geeLayers} plankLocations={plankLocations} />;
 }

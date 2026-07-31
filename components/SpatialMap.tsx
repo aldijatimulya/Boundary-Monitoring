@@ -5,7 +5,7 @@ import { MapContainer, TileLayer, GeoJSON, LayersControl, LayerGroup, Popup, use
 import type { Layer, LatLngBoundsExpression } from "leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { GeeTileLayer, SpatialClusterFeature } from "@/lib/types";
+import { GeeTileLayer, SpatialClusterFeature, PlankLocation } from "@/lib/types";
 
 // Ikon marker bawaan Leaflet mengandalkan path asset yang rusak saat dibundle
 // lewat Next.js/webpack. Ganti ke CDN supaya tetap tampil (dipakai kalau nanti
@@ -50,9 +50,12 @@ function FitToFeatures({ features }: { features: SpatialClusterFeature[] }) {
 type Props = {
   features: SpatialClusterFeature[];
   geeLayers: GeeTileLayer[];
+  plankLocations?: PlankLocation[];
 };
 
-export default function SpatialMap({ features, geeLayers }: Props) {
+const PLANK_COLOR = "#EA580C"; // oranye -- beda dari warna status cluster manapun
+
+export default function SpatialMap({ features, geeLayers, plankLocations = [] }: Props) {
   const styleFor = (feature?: GeoJSON.Feature) => {
     const status = (feature?.properties?.status as SpatialClusterFeature["status"]) ?? "not_started";
     return {
@@ -84,6 +87,39 @@ export default function SpatialMap({ features, geeLayers }: Props) {
     }),
     [features]
   );
+
+  const plankGeoJson = useMemo(
+    () => ({
+      type: "FeatureCollection" as const,
+      features: plankLocations
+        .filter((p) => p.geometry)
+        .map((p) => ({
+          type: "Feature" as const,
+          geometry: p.geometry as GeoJSON.Geometry,
+          properties: { ...p },
+        })),
+    }),
+    [plankLocations]
+  );
+
+  const plankStyle = () => ({ color: PLANK_COLOR, weight: 2, fillColor: PLANK_COLOR, fillOpacity: 0.5 });
+
+  const plankPointToLayer = (feature: GeoJSON.Feature, latlng: any) =>
+    L.circleMarker(latlng, { radius: 7, color: PLANK_COLOR, weight: 2, fillColor: PLANK_COLOR, fillOpacity: 0.8 });
+
+  const onEachPlankFeature = (feature: GeoJSON.Feature, layer: Layer) => {
+    const p = feature.properties as PlankLocation;
+    layer.bindPopup(
+      `<div style="min-width:160px">
+        <p style="font-weight:600;margin-bottom:4px">${p.nama_lokasi}</p>
+        ${p.cluster_nama ? `<p style="font-size:12px;color:#64748b;margin-bottom:6px">Cluster: ${p.cluster_nama}</p>` : ""}
+        <span style="display:inline-block;padding:2px 8px;border-radius:9999px;font-size:11px;background:${PLANK_COLOR}22;color:${PLANK_COLOR}">
+          Lokasi Plank
+        </span>
+        <a href="/plank" style="display:block;margin-top:8px;font-size:12px;color:#2563EB">Lihat di Plank Report &rarr;</a>
+      </div>`
+    );
+  };
 
   const onEachFeature = (feature: GeoJSON.Feature, layer: Layer) => {
     const p = feature.properties as SpatialClusterFeature;
@@ -148,6 +184,18 @@ export default function SpatialMap({ features, geeLayers }: Props) {
               </GeoJSON>
             </LayerGroup>
           </LayersControl.Overlay>
+
+          {plankGeoJson.features.length > 0 && (
+            <LayersControl.Overlay checked name="Lokasi Plank">
+              <GeoJSON
+                key={`plank-${plankLocations.map((p) => p.id).join(",")}`}
+                data={plankGeoJson as any}
+                style={plankStyle as any}
+                pointToLayer={plankPointToLayer as any}
+                onEachFeature={onEachPlankFeature}
+              />
+            </LayersControl.Overlay>
+          )}
         </LayersControl>
 
         <FitToFeatures features={features} />
@@ -161,6 +209,12 @@ export default function SpatialMap({ features, geeLayers }: Props) {
             <span className="text-slate-600">{STATUS_TEXT[s]}</span>
           </div>
         ))}
+        {plankGeoJson.features.length > 0 && (
+          <div className="mt-1 flex items-center gap-2 border-t border-slate-100 pt-1">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: PLANK_COLOR }} />
+            <span className="text-slate-600">Lokasi Plank</span>
+          </div>
+        )}
       </div>
     </div>
   );

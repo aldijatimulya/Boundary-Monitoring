@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { kml as kmlToGeoJson } from "@tmcw/togeojson";
 import { supabase } from "@/lib/supabase";
 import { Cluster } from "@/lib/types";
+import { extractGeometry, parseKmlPolygon } from "@/lib/geo";
 
 type Props = {
   clusterId: string;
@@ -13,69 +13,10 @@ type Props = {
   onSaved: () => void;
 };
 
-// Buang nilai Z (elevasi) dari array koordinat, sisakan [lng, lat] saja.
-function stripZ(coords: unknown): unknown {
-  if (Array.isArray(coords) && coords.length > 0 && typeof coords[0] === "number") {
-    return [coords[0], coords[1]];
-  }
-  if (Array.isArray(coords)) {
-    return coords.map(stripZ);
-  }
-  return coords;
-}
-
-// Kumpulkan SEMUA ring polygon dari sebuah geometry (termasuk yang bersarang
-// di GeometryCollection) ke dalam `out`. Dipakai supaya kalau file punya
-// beberapa Polygon/MultiPolygon terpisah, semuanya ikut kepakai — bukan cuma
-// yang pertama.
-function collectPolygonRings(geom: Record<string, unknown> | null | undefined, out: unknown[]) {
-  if (!geom || typeof geom !== "object") return;
-  if (geom.type === "Polygon" && Array.isArray(geom.coordinates)) {
-    out.push(geom.coordinates);
-  } else if (geom.type === "MultiPolygon" && Array.isArray(geom.coordinates)) {
-    out.push(...(geom.coordinates as unknown[]));
-  } else if (geom.type === "GeometryCollection" && Array.isArray(geom.geometries)) {
-    (geom.geometries as Record<string, unknown>[]).forEach((g) => collectPolygonRings(g, out));
-  }
-}
-
-// Ambil geometry Polygon/MultiPolygon dari berbagai bentuk GeoJSON (Feature,
-// FeatureCollection dengan banyak feature, GeometryCollection, atau geometry
-// mentah), gabungkan semua bagian yang ditemukan jadi satu Polygon/MultiPolygon,
-// lalu buang nilai Z (elevasi). Mengembalikan null kalau tidak ada polygon sama sekali.
-function extractGeometry(raw: unknown): { type: string; coordinates: unknown } | null {
-  if (!raw || typeof raw !== "object") return null;
-  const obj = raw as Record<string, unknown>;
-
-  const rings: unknown[] = [];
-
-  if (obj.type === "FeatureCollection" && Array.isArray(obj.features)) {
-    for (const feature of obj.features as Record<string, unknown>[]) {
-      collectPolygonRings(feature?.geometry as Record<string, unknown>, rings);
-    }
-  } else if (obj.type === "Feature") {
-    collectPolygonRings(obj.geometry as Record<string, unknown>, rings);
-  } else {
-    collectPolygonRings(obj, rings);
-  }
-
-  if (rings.length === 0) return null;
-
-  const cleaned = stripZ(rings) as unknown[];
-  if (cleaned.length === 1) {
-    return { type: "Polygon", coordinates: cleaned[0] };
-  }
-  return { type: "MultiPolygon", coordinates: cleaned };
-}
-
 // Parse isi file .kml jadi GeoJSON FeatureCollection lewat @tmcw/togeojson,
 // lalu lewatkan ke extractGeometry seperti file .geojson biasa.
 function parseKml(text: string): { type: string; coordinates: unknown } | null {
-  const xml = new DOMParser().parseFromString(text, "text/xml");
-  const parserError = xml.querySelector("parsererror");
-  if (parserError) return null;
-  const geojson = kmlToGeoJson(xml);
-  return extractGeometry(geojson);
+  return parseKmlPolygon(text);
 }
 
 export default function ClusterGeometryForm({ clusterId, clusterName, currentGeometry, onClose, onSaved }: Props) {
