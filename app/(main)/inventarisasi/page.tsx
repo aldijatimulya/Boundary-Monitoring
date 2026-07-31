@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Topbar from "@/components/Topbar";
 import InventarisasiLokasiForm from "@/components/InventarisasiLokasiForm";
 import InventarisasiPemilikForm from "@/components/InventarisasiPemilikForm";
@@ -19,7 +19,6 @@ export default function InventarisasiReportPage() {
   const [loading, setLoading] = useState(true);
   const [lokasiFormOpen, setLokasiFormOpen] = useState(false);
   const [pemilikFormFor, setPemilikFormFor] = useState<{ id: string; nama: string } | null>(null);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   async function loadData() {
     setLoading(true);
@@ -78,6 +77,9 @@ export default function InventarisasiReportPage() {
   function totalPemilikCluster(cluster: ClusterGroup) {
     return cluster.lokasi.reduce((s, l) => s + l.pemilik.length, 0);
   }
+  function totalLuasLokasi(lokasi: LokasiGroup) {
+    return lokasi.pemilik.reduce((s, p) => s + p.luas_m2, 0);
+  }
 
   const grandTotal = grouped.reduce((s, c) => s + totalLuasCluster(c), 0);
 
@@ -118,98 +120,141 @@ export default function InventarisasiReportPage() {
           </div>
         )}
 
-        <div className="space-y-4">
-          {grouped.map((cluster) => {
-            const isOpen = expanded[cluster.cluster_id] ?? true;
-            return (
-              <div key={cluster.cluster_id} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                <button
-                  onClick={() => setExpanded((e) => ({ ...e, [cluster.cluster_id]: !isOpen }))}
-                  className="flex w-full items-center justify-between px-5 py-4 text-left hover:bg-slate-50"
-                >
-                  <div>
-                    <p className="font-medium text-slate-900">{cluster.cluster_nama}</p>
-                    <p className="text-xs text-slate-400">
-                      {cluster.lokasi.length} lokasi · {totalPemilikCluster(cluster)} pemilik
-                    </p>
-                  </div>
-                  <p className="text-lg font-medium text-brand-blue">
-                    {totalLuasCluster(cluster).toLocaleString("id-ID")} m²
-                  </p>
-                </button>
-
-                {isOpen && (
-                  <div className="divide-y divide-slate-100 border-t border-slate-100">
-                    {cluster.lokasi.map((lokasi) => {
-                      const subtotal = lokasi.pemilik.reduce((s, p) => s + p.luas_m2, 0);
-                      return (
-                        <div key={lokasi.lokasi_id} className="p-4">
-                          <div className="mb-2 flex items-center justify-between">
-                            <p className="text-sm font-medium text-slate-700">{lokasi.nama_lokasi}</p>
-                            <div className="flex items-center gap-3">
-                              <p className="text-xs text-slate-400">{subtotal.toLocaleString("id-ID")} m²</p>
-                              {canEdit && (
-                                <>
-                                  <button
-                                    onClick={() =>
-                                      setPemilikFormFor({ id: lokasi.lokasi_id, nama: lokasi.nama_lokasi })
-                                    }
-                                    className="text-xs text-brand-blue hover:underline"
-                                  >
-                                    + Pemilik
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteLokasi(lokasi.lokasi_id)}
-                                    className="text-xs text-red-600 hover:underline"
-                                  >
-                                    Hapus lokasi
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          {lokasi.pemilik.length === 0 ? (
-                            <p className="text-xs text-slate-400">Belum ada pemilik tercatat.</p>
-                          ) : (
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="text-left text-xs text-slate-400">
-                                  <th className="py-1 font-normal">Pemilik</th>
-                                  <th className="py-1 font-normal text-right">Luas (m²)</th>
-                                  <th className="py-1 font-normal">Keterangan</th>
-                                  {canEdit && <th className="py-1"></th>}
+        {!loading && grouped.length > 0 && (
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="bg-slate-100 text-center text-slate-600">
+                  <th rowSpan={2} className="border border-slate-200 px-3 py-2 font-medium">No</th>
+                  <th rowSpan={2} className="border border-slate-200 px-3 py-2 font-medium">Cluster</th>
+                  <th rowSpan={2} className="border border-slate-200 px-3 py-2 font-medium">Lokasi</th>
+                  <th colSpan={2} className="border border-slate-200 px-3 py-2 font-medium">Daftar Ganti Rugi</th>
+                  <th rowSpan={2} className="border border-slate-200 px-3 py-2 font-medium">Total (m²)</th>
+                  <th rowSpan={2} className="border border-slate-200 px-3 py-2 font-medium">Keterangan</th>
+                  {canEdit && <th rowSpan={2} className="border border-slate-200 px-3 py-2 font-medium">Aksi</th>}
+                </tr>
+                <tr className="bg-slate-100 text-center text-slate-600">
+                  <th className="border border-slate-200 px-3 py-2 font-medium">Nama</th>
+                  <th className="border border-slate-200 px-3 py-2 font-medium">Luas (m²)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {grouped.map((cluster, clusterIdx) => {
+                  const clusterRowCount = Math.max(
+                    1,
+                    cluster.lokasi.reduce((s, l) => s + Math.max(1, l.pemilik.length), 0)
+                  );
+                  let clusterCellRendered = false;
+                  return (
+                    <Fragment key={cluster.cluster_id}>
+                      {cluster.lokasi.map((lokasi) => {
+                        const lokasiRowCount = Math.max(1, lokasi.pemilik.length);
+                        const rowsForLokasi = lokasi.pemilik.length > 0 ? lokasi.pemilik : [null];
+                        return (
+                          <Fragment key={lokasi.lokasi_id}>
+                            {rowsForLokasi.map((p, pIdx) => {
+                              const isFirstOfLokasi = pIdx === 0;
+                              const isFirstOfCluster = !clusterCellRendered;
+                              if (isFirstOfCluster) clusterCellRendered = true;
+                              return (
+                                <tr key={p ? p.pemilik_id : `${lokasi.lokasi_id}-empty`} className="text-slate-700">
+                                  {isFirstOfCluster && (
+                                    <td
+                                      rowSpan={clusterRowCount}
+                                      className="border border-slate-200 px-3 py-2 text-center align-middle"
+                                    >
+                                      {clusterIdx + 1}
+                                    </td>
+                                  )}
+                                  {isFirstOfCluster && (
+                                    <td
+                                      rowSpan={clusterRowCount}
+                                      className="border border-slate-200 px-3 py-2 text-center align-middle font-medium"
+                                    >
+                                      {cluster.cluster_nama}
+                                    </td>
+                                  )}
+                                  {isFirstOfLokasi && (
+                                    <td
+                                      rowSpan={lokasiRowCount}
+                                      className="border border-slate-200 px-3 py-2 align-middle"
+                                    >
+                                      {lokasi.nama_lokasi}
+                                    </td>
+                                  )}
+                                  <td className="border border-slate-200 px-3 py-2">
+                                    {p ? p.nama_pemilik : <span className="text-slate-300">—</span>}
+                                  </td>
+                                  <td className="border border-slate-200 px-3 py-2 text-right">
+                                    {p ? p.luas_m2.toLocaleString("id-ID") : <span className="text-slate-300">—</span>}
+                                  </td>
+                                  {isFirstOfLokasi && (
+                                    <td
+                                      rowSpan={lokasiRowCount}
+                                      className="border border-slate-200 px-3 py-2 text-right align-middle font-medium text-brand-blue"
+                                    >
+                                      {totalLuasLokasi(lokasi).toLocaleString("id-ID")}
+                                    </td>
+                                  )}
+                                  <td className="border border-slate-200 px-3 py-2 text-slate-500">
+                                    {p ? p.keterangan || "—" : "—"}
+                                  </td>
+                                  {canEdit && (
+                                    <td className="border border-slate-200 px-3 py-2 text-center">
+                                      <div className="flex flex-wrap items-center justify-center gap-2">
+                                        {isFirstOfLokasi && (
+                                          <>
+                                            <button
+                                              onClick={() =>
+                                                setPemilikFormFor({ id: lokasi.lokasi_id, nama: lokasi.nama_lokasi })
+                                              }
+                                              className="text-xs text-brand-blue hover:underline"
+                                            >
+                                              + Pemilik
+                                            </button>
+                                            <button
+                                              onClick={() => handleDeleteLokasi(lokasi.lokasi_id)}
+                                              className="text-xs text-red-600 hover:underline"
+                                            >
+                                              Hapus lokasi
+                                            </button>
+                                          </>
+                                        )}
+                                        {p && (
+                                          <button
+                                            onClick={() => handleDeletePemilik(p.pemilik_id)}
+                                            className="text-xs text-red-600 hover:underline"
+                                          >
+                                            Hapus pemilik
+                                          </button>
+                                        )}
+                                      </div>
+                                    </td>
+                                  )}
                                 </tr>
-                              </thead>
-                              <tbody>
-                                {lokasi.pemilik.map((p) => (
-                                  <tr key={p.pemilik_id} className="border-t border-slate-50">
-                                    <td className="py-1.5">{p.nama_pemilik}</td>
-                                    <td className="py-1.5 text-right">{p.luas_m2.toLocaleString("id-ID")}</td>
-                                    <td className="py-1.5 text-slate-500">{p.keterangan || "—"}</td>
-                                    {canEdit && (
-                                      <td className="py-1.5 text-right">
-                                        <button
-                                          onClick={() => handleDeletePemilik(p.pemilik_id)}
-                                          className="text-xs text-red-600 hover:underline"
-                                        >
-                                          Hapus
-                                        </button>
-                                      </td>
-                                    )}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                              );
+                            })}
+                          </Fragment>
+                        );
+                      })}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="bg-slate-50 font-medium text-slate-700">
+                  <td colSpan={5} className="border border-slate-200 px-3 py-2 text-right">
+                    Total Keseluruhan
+                  </td>
+                  <td className="border border-slate-200 px-3 py-2 text-right text-brand-blue">
+                    {grandTotal.toLocaleString("id-ID")}
+                  </td>
+                  <td className="border border-slate-200 px-3 py-2" colSpan={canEdit ? 2 : 1}></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
       </main>
 
       {lokasiFormOpen && (

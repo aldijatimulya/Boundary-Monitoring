@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Topbar from "@/components/Topbar";
 import SosialEntryForm from "@/components/SosialEntryForm";
 import { supabase } from "@/lib/supabase";
 import { useProfile } from "@/lib/useProfile";
 import { SosialReportRow, Cluster } from "@/lib/types";
 
+type ClusterSosialGroup = { cluster_id: string; cluster_nama: string; kasus: SosialReportRow[] };
 
 export default function SosialReportPage() {
   const { canEdit } = useProfile();
@@ -39,6 +40,21 @@ export default function SosialReportPage() {
 
   const filtered = rows.filter((r) => r.lokasi.toLowerCase().includes(search.toLowerCase()));
   const totalOkupasi = filtered.reduce((s, r) => s + Number(r.luas_okupasi_m2), 0);
+
+  const grouped: ClusterSosialGroup[] = useMemo(() => {
+    const map = new Map<string, ClusterSosialGroup>();
+    for (const r of filtered) {
+      if (!map.has(r.cluster_id)) {
+        map.set(r.cluster_id, { cluster_id: r.cluster_id, cluster_nama: r.lokasi, kasus: [] });
+      }
+      map.get(r.cluster_id)!.kasus.push(r);
+    }
+    return Array.from(map.values());
+  }, [filtered]);
+
+  function totalOkupasiCluster(group: ClusterSosialGroup) {
+    return group.kasus.reduce((s, r) => s + Number(r.luas_okupasi_m2), 0);
+  }
 
   return (
     <>
@@ -78,51 +94,95 @@ export default function SosialReportPage() {
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-          <table className="w-full text-sm">
+          <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b border-slate-100 text-left text-slate-500">
-                <th className="px-4 py-3 font-normal">Cluster</th>
-                <th className="px-4 py-3 font-normal text-right">Luas okupasi</th>
-                <th className="px-4 py-3 font-normal">Jenis okupasi</th>
-                <th className="px-4 py-3 font-normal">Pemilik lahan</th>
-                <th className="px-4 py-3 font-normal">Keterangan</th>
-                <th className="px-4 py-3 font-normal">Tanggal</th>
-                {canEdit && <th className="px-4 py-3 font-normal text-right"></th>}
+              <tr className="bg-slate-100 text-center text-slate-600">
+                <th className="border border-slate-200 px-3 py-2 font-medium">No</th>
+                <th className="border border-slate-200 px-3 py-2 font-medium">Cluster</th>
+                <th className="border border-slate-200 px-3 py-2 font-medium">Pemilik Lahan</th>
+                <th className="border border-slate-200 px-3 py-2 font-medium">Jenis Okupasi</th>
+                <th className="border border-slate-200 px-3 py-2 font-medium">Luas Okupasi (m²)</th>
+                <th className="border border-slate-200 px-3 py-2 font-medium">Total (m²)</th>
+                <th className="border border-slate-200 px-3 py-2 font-medium">Keterangan</th>
+                <th className="border border-slate-200 px-3 py-2 font-medium">Tanggal</th>
+                {canEdit && <th className="border border-slate-200 px-3 py-2 font-medium">Aksi</th>}
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                  <td colSpan={canEdit ? 9 : 8} className="border border-slate-200 px-4 py-8 text-center text-slate-400">
                     Memuat data...
                   </td>
                 </tr>
               )}
-              {!loading && filtered.length === 0 && (
+              {!loading && grouped.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                  <td colSpan={canEdit ? 9 : 8} className="border border-slate-200 px-4 py-8 text-center text-slate-400">
                     Belum ada data okupasi/permasalahan sosial yang tercatat.
                   </td>
                 </tr>
               )}
-              {filtered.map((r) => (
-                <tr key={r.id} className="border-b border-slate-50">
-                  <td className="px-4 py-2 font-medium">{r.lokasi}</td>
-                  <td className="px-4 py-2 text-right">{Number(r.luas_okupasi_m2).toLocaleString("id-ID")} m²</td>
-                  <td className="px-4 py-2">{r.jenis_okupasi || "—"}</td>
-                  <td className="px-4 py-2">{r.pemilik_lahan || "—"}</td>
-                  <td className="max-w-xs px-4 py-2 text-slate-500">{r.keterangan || "—"}</td>
-                  <td className="px-4 py-2 text-slate-500">{r.tanggal_catat}</td>
-                  {canEdit && (
-                    <td className="px-4 py-2 text-right">
-                      <button onClick={() => handleDelete(r.id)} className="text-xs text-red-600 hover:underline">
-                        Hapus
-                      </button>
-                    </td>
-                  )}
-                </tr>
+              {grouped.map((group, groupIdx) => (
+                <Fragment key={group.cluster_id}>
+                  {group.kasus.map((r, rIdx) => (
+                    <tr key={r.id} className="text-slate-700">
+                      {rIdx === 0 && (
+                        <td
+                          rowSpan={group.kasus.length}
+                          className="border border-slate-200 px-3 py-2 text-center align-middle"
+                        >
+                          {groupIdx + 1}
+                        </td>
+                      )}
+                      {rIdx === 0 && (
+                        <td
+                          rowSpan={group.kasus.length}
+                          className="border border-slate-200 px-3 py-2 text-center align-middle font-medium"
+                        >
+                          {group.cluster_nama}
+                        </td>
+                      )}
+                      <td className="border border-slate-200 px-3 py-2">{r.pemilik_lahan || "—"}</td>
+                      <td className="border border-slate-200 px-3 py-2">{r.jenis_okupasi || "—"}</td>
+                      <td className="border border-slate-200 px-3 py-2 text-right">
+                        {Number(r.luas_okupasi_m2).toLocaleString("id-ID")}
+                      </td>
+                      {rIdx === 0 && (
+                        <td
+                          rowSpan={group.kasus.length}
+                          className="border border-slate-200 px-3 py-2 text-right align-middle font-medium text-brand-blue"
+                        >
+                          {totalOkupasiCluster(group).toLocaleString("id-ID")}
+                        </td>
+                      )}
+                      <td className="border border-slate-200 px-3 py-2 text-slate-500">{r.keterangan || "—"}</td>
+                      <td className="border border-slate-200 px-3 py-2 text-slate-500">{r.tanggal_catat}</td>
+                      {canEdit && (
+                        <td className="border border-slate-200 px-3 py-2 text-center">
+                          <button onClick={() => handleDelete(r.id)} className="text-xs text-red-600 hover:underline">
+                            Hapus
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </Fragment>
               ))}
             </tbody>
+            {grouped.length > 0 && (
+              <tfoot>
+                <tr className="bg-slate-50 font-medium text-slate-700">
+                  <td colSpan={5} className="border border-slate-200 px-3 py-2 text-right">
+                    Total Keseluruhan
+                  </td>
+                  <td className="border border-slate-200 px-3 py-2 text-right text-brand-blue">
+                    {totalOkupasi.toLocaleString("id-ID")}
+                  </td>
+                  <td colSpan={canEdit ? 3 : 2} className="border border-slate-200 px-3 py-2"></td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
         <p className="text-xs text-slate-400">

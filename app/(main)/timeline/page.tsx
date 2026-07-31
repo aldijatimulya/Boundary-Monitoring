@@ -3,6 +3,7 @@
 import { useEffect, useState, Fragment } from "react";
 import Topbar from "@/components/Topbar";
 import TimelineForm from "@/components/TimelineForm";
+import TimelineGanttChart from "@/components/TimelineGanttChart";
 import { supabase } from "@/lib/supabase";
 import { TimelineActivity, TimelineProgressRow, STATUS_LABEL, Project } from "@/lib/types";
 import { format } from "date-fns";
@@ -113,6 +114,8 @@ export default function TimelinePage() {
             Tambah kegiatan
           </button>
         </div>
+
+        <TimelineGanttChart rows={rows} topLevel={topLevel} childrenOf={childrenOf} />
 
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
           <table className="w-full text-sm">
