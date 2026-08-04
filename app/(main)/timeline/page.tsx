@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState, Fragment } from "react";
+import { useEffect, useState, Fragment, useMemo } from "react";
 import Topbar from "@/components/Topbar";
 import TimelineForm from "@/components/TimelineForm";
 import TimelineGanttChart from "@/components/TimelineGanttChart";
+import TimelineMatrixTable from "@/components/TimelineMatrixTable";
 import { supabase } from "@/lib/supabase";
 import { TimelineActivity, TimelineProgressRow, STATUS_LABEL, Project } from "@/lib/types";
+import { buildTimelineMatrix } from "@/lib/timeline-matrix";
+import { exportTimelineDataExcel, exportTimelineMatrixExcel } from "@/lib/export/excel-timeline";
 import { format } from "date-fns";
 
 export default function TimelinePage() {
@@ -43,6 +46,7 @@ export default function TimelinePage() {
 
   const topLevel = rows.filter((r) => !r.parent_activity_id);
   const childrenOf = (id: string) => rows.filter((r) => r.parent_activity_id === id);
+  const matrix = useMemo(() => buildTimelineMatrix(rows), [rows]);
 
   const projectStart = rows[0]?.tanggal_mulai;
   const projectEnd = rows.reduce(
@@ -104,18 +108,39 @@ export default function TimelinePage() {
               </p>
             )}
           </div>
-          <button
-            onClick={() => {
-              setEditing(null);
-              setFormOpen(true);
-            }}
-            className="rounded-md bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            Tambah kegiatan
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => exportTimelineDataExcel(rows)}
+              disabled={rows.length === 0}
+              className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
+            >
+              Download Excel
+            </button>
+            <button
+              onClick={() => {
+                setEditing(null);
+                setFormOpen(true);
+              }}
+              className="rounded-md bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Tambah kegiatan
+            </button>
+          </div>
         </div>
 
         <TimelineGanttChart rows={rows} topLevel={topLevel} childrenOf={childrenOf} />
+
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-slate-700">Matriks Timeline — Rencana vs Realisasi</h2>
+          <button
+            onClick={() => matrix && exportTimelineMatrixExcel(matrix)}
+            disabled={!matrix}
+            className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
+          >
+            Download Matriks (Excel)
+          </button>
+        </div>
+        <TimelineMatrixTable matrix={matrix} />
 
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
           <table className="w-full text-sm">

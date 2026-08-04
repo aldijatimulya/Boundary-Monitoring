@@ -7,6 +7,7 @@ import InventarisasiPemilikForm from "@/components/InventarisasiPemilikForm";
 import { supabase } from "@/lib/supabase";
 import { useProfile } from "@/lib/useProfile";
 import { InventarisasiDetailRow, Cluster } from "@/lib/types";
+import { exportInventarisasiExcel } from "@/lib/export/excel-modules";
 
 type PemilikRow = { pemilik_id: string; nama_pemilik: string; luas_m2: number; keterangan: string | null };
 type LokasiGroup = { lokasi_id: string; nama_lokasi: string; pemilik: PemilikRow[] };
@@ -112,6 +113,26 @@ export default function InventarisasiReportPage() {
             </button>
           </div>
         )}
+
+        <div className="flex justify-end">
+          <button
+            onClick={() =>
+              exportInventarisasiExcel(
+                rows,
+                grouped.map((c) => ({
+                  lokasi: c.cluster_nama,
+                  jumlah_lokasi: c.lokasi.length,
+                  jumlah_pemilik: totalPemilikCluster(c),
+                  total_luas_m2: totalLuasCluster(c),
+                }))
+              )
+            }
+            disabled={rows.length === 0}
+            className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
+          >
+            Download Excel
+          </button>
+        </div>
 
         {loading && <p className="text-sm text-slate-400">Memuat data...</p>}
         {!loading && grouped.length === 0 && (

@@ -6,6 +6,7 @@ import PlankLocationForm from "@/components/PlankLocationForm";
 import { supabase } from "@/lib/supabase";
 import { useProfile } from "@/lib/useProfile";
 import { PlankLocation, Cluster } from "@/lib/types";
+import { exportPlankExcel } from "@/lib/export/excel-modules";
 
 function PlankDetailModal({
   plank,
@@ -148,6 +149,16 @@ export default function PlankReportPage() {
               Tambah lokasi plank
             </button>
           )}
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            onClick={() => exportPlankExcel(filtered)}
+            disabled={filtered.length === 0}
+            className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
+          >
+            Download Excel
+          </button>
         </div>
 
         {loading && <p className="text-sm text-slate-400">Memuat data...</p>}

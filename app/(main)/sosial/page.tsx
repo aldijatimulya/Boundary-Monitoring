@@ -6,6 +6,7 @@ import SosialEntryForm from "@/components/SosialEntryForm";
 import { supabase } from "@/lib/supabase";
 import { useProfile } from "@/lib/useProfile";
 import { SosialReportRow, Cluster } from "@/lib/types";
+import { exportSosialExcel } from "@/lib/export/excel-modules";
 
 type ClusterSosialGroup = { cluster_id: string; cluster_nama: string; kasus: SosialReportRow[] };
 
@@ -91,6 +92,16 @@ export default function SosialReportPage() {
               Tambah data okupasi
             </button>
           )}
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            onClick={() => exportSosialExcel(filtered)}
+            disabled={filtered.length === 0}
+            className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
+          >
+            Download Excel
+          </button>
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
