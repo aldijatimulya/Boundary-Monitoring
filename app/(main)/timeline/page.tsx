@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useState, Fragment, useMemo } from "react";
+import { useEffect, useRef, useState, Fragment, useMemo } from "react";
 import Topbar from "@/components/Topbar";
 import TimelineForm from "@/components/TimelineForm";
 import TimelineGanttChart from "@/components/TimelineGanttChart";
 import TimelineMatrixTable from "@/components/TimelineMatrixTable";
+import TimelineCurveChart from "@/components/TimelineCurveChart";
 import { supabase } from "@/lib/supabase";
 import { TimelineActivity, TimelineProgressRow, STATUS_LABEL, Project } from "@/lib/types";
 import { buildTimelineMatrix } from "@/lib/timeline-matrix";
 import { exportTimelineDataExcel, exportTimelineMatrixExcel } from "@/lib/export/excel-timeline";
+import { findSvgInContainer, downloadSvgAsPng, svgToPngDataUrl } from "@/lib/export/svg-to-png";
+import { exportTimelineCurveExcel } from "@/lib/export/excel-chart";
 import { format } from "date-fns";
 
 export default function TimelinePage() {
@@ -18,6 +21,9 @@ export default function TimelinePage() {
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<TimelineActivity | null>(null);
+  const [downloadingImage, setDownloadingImage] = useState(false);
+  const [downloadingChartExcel, setDownloadingChartExcel] = useState(false);
+  const chartRef = useRef<HTMLDivElement>(null);
 
   async function loadData() {
     setLoading(true);
@@ -57,6 +63,33 @@ export default function TimelinePage() {
     projectStart && projectEnd
       ? Math.round((new Date(projectEnd).getTime() - new Date(projectStart).getTime()) / 86400000) + 1
       : 0;
+
+  async function handleDownloadChartImage() {
+    const svg = findSvgInContainer(chartRef.current);
+    if (!svg) return;
+    setDownloadingImage(true);
+    try {
+      await downloadSvgAsPng(svg, `Timeline-Kurva-S_${new Date().toISOString().slice(0, 10)}.png`);
+    } catch {
+      alert("Gagal membuat gambar grafik. Coba lagi.");
+    } finally {
+      setDownloadingImage(false);
+    }
+  }
+
+  async function handleDownloadChartExcel() {
+    const svg = findSvgInContainer(chartRef.current);
+    if (!svg || !matrix) return;
+    setDownloadingChartExcel(true);
+    try {
+      const pngDataUrl = await svgToPngDataUrl(svg);
+      await exportTimelineCurveExcel(pngDataUrl, matrix);
+    } catch {
+      alert("Gagal membuat file Excel grafik. Coba lagi.");
+    } finally {
+      setDownloadingChartExcel(false);
+    }
+  }
 
   function renderRow(r: TimelineProgressRow, indent = false) {
     const status = STATUS_LABEL[r.status_terhitung];
@@ -129,6 +162,31 @@ export default function TimelinePage() {
         </div>
 
         <TimelineGanttChart rows={rows} topLevel={topLevel} childrenOf={childrenOf} />
+
+        {matrix && (
+          <>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-medium text-slate-700">Kurva-S Timeline</h2>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleDownloadChartImage}
+                  disabled={downloadingImage}
+                  className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {downloadingImage ? "Menyiapkan..." : "Download Gambar (PNG)"}
+                </button>
+                <button
+                  onClick={handleDownloadChartExcel}
+                  disabled={downloadingChartExcel}
+                  className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {downloadingChartExcel ? "Menyiapkan..." : "Download Grafik (Excel)"}
+                </button>
+              </div>
+            </div>
+            <TimelineCurveChart ref={chartRef} matrix={matrix} />
+          </>
+        )}
 
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-medium text-slate-700">Matriks Timeline — Rencana vs Realisasi</h2>
