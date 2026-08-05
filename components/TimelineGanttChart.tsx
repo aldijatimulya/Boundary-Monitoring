@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { addDays, differenceInCalendarDays, endOfMonth, format, isWithinInterval } from "date-fns";
+import { useMemo, useRef, useState } from "react";
+import { addDays, differenceInCalendarDays, format, isWithinInterval } from "date-fns";
 import { id as localeId } from "date-fns/locale";
 import { TimelineProgressRow } from "@/lib/types";
 
@@ -11,7 +11,7 @@ type Props = {
   topLevel: TimelineProgressRow[];
 };
 
-type Column = { start: Date; end: Date; days: number; label: string };
+type Column = { start: Date; end: Date; days: number; label: string; title?: string };
 type MonthGroup = { label: string; days: number };
 
 const STATUS_COLOR: Record<string, { base: string; fill: string; solid: boolean }> = {
@@ -50,10 +50,18 @@ function buildWeekColumns(start: Date, end: Date): { columns: Column[]; monthGro
   const columns: Column[] = [];
   const monthGroups: MonthGroup[] = [];
   let cursor = start;
+  let weekIndex = 0;
   while (cursor <= end) {
+    weekIndex += 1;
     const colEnd = addDays(cursor, 6) > end ? end : addDays(cursor, 6);
     const days = differenceInCalendarDays(colEnd, cursor) + 1;
-    columns.push({ start: cursor, end: colEnd, days, label: format(cursor, "d MMM") });
+    columns.push({
+      start: cursor,
+      end: colEnd,
+      days,
+      label: `Mgg ${weekIndex}`,
+      title: `Minggu ${weekIndex}: ${format(cursor, "d MMM", { locale: localeId })} – ${format(colEnd, "d MMM yyyy", { locale: localeId })}`,
+    });
     const monthLabel = format(cursor, "MMMM yyyy", { locale: localeId });
     const lastGroup = monthGroups[monthGroups.length - 1];
     if (lastGroup && lastGroup.label === monthLabel) {
@@ -66,20 +74,44 @@ function buildWeekColumns(start: Date, end: Date): { columns: Column[]; monthGro
   return { columns, monthGroups };
 }
 
-function buildMonthColumns(start: Date, end: Date): { columns: Column[]; monthGroups: MonthGroup[] } {
-  const columns: Column[] = [];
-  let cursor = start;
-  while (cursor <= end) {
-    const monthEnd = endOfMonth(cursor);
-    const colEnd = monthEnd > end ? end : monthEnd;
-    const days = differenceInCalendarDays(colEnd, cursor) + 1;
-    columns.push({ start: cursor, end: colEnd, days, label: format(cursor, "MMM yyyy", { locale: localeId }) });
-    cursor = addDays(colEnd, 1);
-  }
-  return { columns, monthGroups: [] };
-}
+
 
 export default function TimelineGanttChart({ rows, childrenOf, topLevel }: Props) {
+  const captureRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [downloadingImage, setDownloadingImage] = useState(false);
+
+  async function handleDownloadImage() {
+    if (!captureRef.current) return;
+    setDownloadingImage(true);
+    try {
+      // html-to-image di-lazy-load (bukan import biasa) supaya ukurannya
+      // (~30KB) tidak ikut ke initial bundle halaman Timeline -- cuma
+      // di-download browser saat tombol ini benar-benar diklik.
+      const { toPng } = await import("html-to-image");
+      // Chart-nya HTML biasa (bukan SVG) dan lebih lebar dari layar (makanya
+      // di-scroll horizontal) -- lebar target diambil dari elemen konten
+      // paling dalam (contentRef), bukan dari kartu pembungkusnya, supaya
+      // hasil gambarnya penuh sampai minggu terakhir, tidak terpotong scroll.
+      const fullWidth = (contentRef.current?.scrollWidth ?? captureRef.current.scrollWidth) + 2;
+      const dataUrl = await toPng(captureRef.current, {
+        backgroundColor: "#ffffff",
+        pixelRatio: 2,
+        filter: (node) => !(node instanceof HTMLElement && node.dataset.timelineExportIgnore === "true"),
+        width: fullWidth,
+        height: captureRef.current.scrollHeight,
+      });
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = `Timeline-Gantt-Chart_${new Date().toISOString().slice(0, 10)}.png`;
+      link.click();
+    } catch {
+      alert("Gagal membuat gambar timeline. Coba lagi.");
+    } finally {
+      setDownloadingImage(false);
+    }
+  }
+
   const { overallStart, overallEnd } = useMemo(() => {
     if (rows.length === 0) return { overallStart: null as Date | null, overallEnd: null as Date | null };
     let minStart = new Date(rows[0].tanggal_mulai);
@@ -102,12 +134,13 @@ export default function TimelineGanttChart({ rows, childrenOf, topLevel }: Props
       const { columns, monthGroups } = buildDayColumns(overallStart, overallEnd);
       return { columns, monthGroups, totalDays, granularity: "day" as const };
     }
-    if (totalDays <= 180) {
-      const { columns, monthGroups } = buildWeekColumns(overallStart, overallEnd);
-      return { columns, monthGroups, totalDays, granularity: "week" as const };
-    }
-    const { columns, monthGroups } = buildMonthColumns(overallStart, overallEnd);
-    return { columns, monthGroups, totalDays, granularity: "month" as const };
+    // Selalu pakai kolom mingguan (bukan cuma nama bulan) berapa pun panjang
+    // proyeknya, supaya info "minggu ke berapa" selalu kelihatan di header --
+    // sebelumnya proyek >180 hari jatuh ke tampilan bulanan saja tanpa
+    // breakdown minggu. Tabel jadi lebar untuk proyek panjang, tapi sudah ada
+    // scroll horizontal (sama seperti Matriks Timeline yang juga selalu mingguan).
+    const { columns, monthGroups } = buildWeekColumns(overallStart, overallEnd);
+    return { columns, monthGroups, totalDays, granularity: "week" as const };
   }, [overallStart, overallEnd]);
 
   if (!overallStart || !overallEnd || rows.length === 0) {
@@ -165,7 +198,7 @@ export default function TimelineGanttChart({ rows, childrenOf, topLevel }: Props
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white">
+    <div ref={captureRef} className="rounded-xl border border-slate-200 bg-white">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
         <p className="font-medium text-slate-900">Timeline Kegiatan</p>
         <div className="flex flex-wrap items-center gap-4">
@@ -175,11 +208,19 @@ export default function TimelineGanttChart({ rows, childrenOf, topLevel }: Props
               {l.label}
             </div>
           ))}
+          <button
+            onClick={handleDownloadImage}
+            disabled={downloadingImage}
+            data-timeline-export-ignore="true"
+            className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs hover:bg-slate-50 disabled:opacity-50"
+          >
+            {downloadingImage ? "Menyiapkan..." : "Download Gambar (PNG)"}
+          </button>
         </div>
       </div>
 
       <div className="overflow-x-auto">
-        <div style={{ minWidth: granularity === "day" ? 900 : 700 }}>
+        <div ref={contentRef} style={{ minWidth: granularity === "day" ? 900 : Math.max(700, columns.length * 64) }}>
           {/* Header */}
           <div className="flex border-b border-slate-100">
             <div className="w-56 shrink-0 border-r border-slate-100 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
@@ -204,6 +245,7 @@ export default function TimelineGanttChart({ rows, childrenOf, topLevel }: Props
                   <div
                     key={i}
                     style={{ width: `${(c.days / totalDays) * 100}%` }}
+                    title={c.title}
                     className="border-r border-slate-100 bg-slate-50 px-1 py-1 text-center text-[11px] text-slate-400 last:border-r-0"
                   >
                     {c.label}

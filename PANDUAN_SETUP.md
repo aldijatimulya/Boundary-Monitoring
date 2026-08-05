@@ -314,4 +314,71 @@ semua perubahan Sprint 1–4).
 - Role-based access per halaman (admin/surveyor/PIC lapangan/viewer Medco)
 - Alur approval laporan (submitted → approved)
 
-Beri tahu saya kapan siap lanjut ke bagian berikutnya.
+## Update — Download Excel (Timeline, Reconstruction, Patok, Plank, Sosial, Inventarisasi)
+
+Setiap halaman berikut sekarang punya tombol **Download Excel** yang menghasilkan
+file `.xlsx` langsung dari browser (pakai library `xlsx`/SheetJS, tanpa lewat
+server) — kolomnya mengikuti field di database (view Supabase-nya), bukan cuma
+yang tampil ringkas di layar:
+
+- **Reconstruction Report** → `lib/export/excel-modules.ts` (`exportReconstructionExcel`)
+- **Patok Report** → `exportPatokExcel`
+- **Plank Report** → `exportPlankExcel` (mengikuti hasil pencarian/filter yang sedang aktif)
+- **Sosial Report** → `exportSosialExcel` (termasuk baris "Total Keseluruhan" di bawah)
+- **Inventarisasi Report** → `exportInventarisasiExcel` — hasilnya **2 sheet**
+  dalam satu file: "Detail Pemilik" dan "Rekap per Cluster"
+- **Timeline** → `lib/export/excel-timeline.ts`, ada **2 tombol terpisah**:
+  - "Download Excel" → data mentah tiap kegiatan (tanggal, PIC, bobot, progres, status)
+  - "Download Matriks (Excel)" → matriks kurva-S mingguan (lihat di bawah)
+
+### Matriks Timeline (baru)
+
+Halaman Timeline sekarang menampilkan tabel **Matriks Timeline — Rencana vs
+Realisasi** di bawah Gantt chart: baris = tiap kegiatan (bobot %, kontribusi
+rencana per minggu), plus 2 baris ringkasan di bawah (Rencana Kumulatif %,
+Realisasi Kumulatif %) — model kurva-S standar berbasis bobot & tanggal
+kegiatan (`lib/timeline-matrix.ts`).
+
+**Penting untuk diketahui:** baris "Realisasi Kumulatif" adalah **estimasi**,
+bukan histori mingguan sungguhan — karena skema database saat ini cuma
+menyimpan progres TERKINI per kegiatan (`progres_persen`), bukan snapshot
+progres di tiap minggu sebelumnya. Realisasi dihitung dengan mengikuti bentuk
+kurva rencana, diskalakan pakai progres aktual yang tercatat sekarang, dan
+cuma diisi sampai minggu berjalan (minggu yang belum lewat sengaja dikosongkan
+"-"). Kalau ke depan mau histori mingguan yang benar-benar akurat, perlu tabel
+baru semacam `timeline_progress_snapshot` (kegiatan + minggu + progres saat
+itu) yang diisi tiap kali laporan mingguan dibuat — beri tahu saya kalau mau
+dikerjakan.
+
+### Download Kurva-S (gambar & Excel)
+
+Di atas tabel Matriks Timeline sekarang ada grafik **Kurva-S — Rencana vs
+Realisasi Kumulatif** (`components/TimelineCurveChart.tsx`, pakai `recharts`
+yang sudah dipakai juga di halaman Analytics), dengan 2 tombol download:
+
+- **Download Gambar (PNG)** — grafik dirender ulang ke `<canvas>` lalu
+  di-download sebagai file `.png` (`lib/export/svg-to-png.ts`) -- murni di
+  browser, tidak ada library screenshot tambahan.
+- **Download Grafik (Excel)** — file `.xlsx` berisi gambar kurva yang sama
+  (disisipkan sebagai picture, bukan native Excel chart object -- tidak ada
+  library gratis yang mendukung bikin chart Excel asli dari browser) DIIKUTI
+  tabel datanya di bawah gambar, biar bisa dipakai bikin chart manual sendiri
+  di Excel kalau perlu (`lib/export/excel-chart.ts`, pakai `exceljs`,
+  di-*lazy load* biar tidak membengkakkan ukuran halaman Timeline untuk
+  pengguna yang tidak pernah klik tombol ini).
+
+### Download Gantt Chart + header mingguan (baru)
+
+- Chart **Timeline Kegiatan** (Gantt) sekarang punya tombolnya sendiri
+  **Download Gambar (PNG)** di pojok kanan atas (sebelah legend). Beda dengan
+  Kurva-S yang berbasis SVG (Recharts), Gantt chart ini dibangun dari
+  HTML/CSS biasa (div berwarna, bukan grafik vector) -- jadi dipakai library
+  `html-to-image` (bukan konversi SVG→canvas) untuk menangkapnya jadi PNG,
+  termasuk bagian yang di-scroll horizontal (tidak terpotong).
+- Header Gantt chart sekarang **selalu** menampilkan breakdown per minggu
+  ("Mgg 1", "Mgg 2", dst — arahkan kursor buat lihat tanggal persisnya),
+  bukan cuma nama bulan seperti sebelumnya untuk proyek yang lebih panjang
+  dari 180 hari. Ini juga membuat header Gantt chart konsisten dengan
+  penomoran minggu di Matriks Timeline & Kurva-S di atas.
+
+
