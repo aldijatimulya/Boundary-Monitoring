@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabase";
 import { ReportMatrixRow, STATUS_LABEL, Project, Cluster } from "@/lib/types";
 import { formatM2 } from "@/lib/units";
 import { exportReconstructionExcel } from "@/lib/export/excel-modules";
+import { useProfile } from "@/lib/useProfile";
 
 export default function ReportMatrixPage() {
   const [project, setProject] = useState<Project | null>(null);
@@ -16,6 +17,7 @@ export default function ReportMatrixPage() {
   const [geometryByCluster, setGeometryByCluster] = useState<Record<string, Cluster["geometry"]>>({});
   const [loading, setLoading] = useState(true);
   const [clusterFormOpen, setClusterFormOpen] = useState(false);
+  const { canEdit } = useProfile();
   const [entryFor, setEntryFor] = useState<ReportMatrixRow | null>(null);
   const [geometryFor, setGeometryFor] = useState<ReportMatrixRow | null>(null);
 
@@ -70,12 +72,14 @@ export default function ReportMatrixPage() {
           >
             Download Excel
           </button>
-          <button
-            onClick={() => setClusterFormOpen(true)}
-            className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm hover:bg-slate-50"
-          >
-            Tambah cluster
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => setClusterFormOpen(true)}
+              className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm hover:bg-slate-50"
+            >
+              Tambah cluster
+            </button>
+          )}
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
@@ -129,17 +133,21 @@ export default function ReportMatrixPage() {
                       </span>
                     </td>
                     <td className="px-4 py-2 text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        <button
-                          onClick={() => setGeometryFor(r)}
-                          className="text-xs text-brand-blue hover:underline"
-                        >
-                          {geometryByCluster[r.cluster_id] ? "Edit geometri" : "Geometri"}
-                        </button>
-                        <button onClick={() => setEntryFor(r)} className="text-xs text-brand-blue hover:underline">
-                          Catat update
-                        </button>
-                      </div>
+                      {canEdit ? (
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            onClick={() => setGeometryFor(r)}
+                            className="text-xs text-brand-blue hover:underline"
+                          >
+                            {geometryByCluster[r.cluster_id] ? "Edit geometri" : "Geometri"}
+                          </button>
+                          <button onClick={() => setEntryFor(r)} className="text-xs text-brand-blue hover:underline">
+                            Catat update
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-300">—</span>
+                      )}
                     </td>
                   </tr>
                 );

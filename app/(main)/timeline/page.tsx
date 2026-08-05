@@ -12,6 +12,7 @@ import { buildTimelineMatrix } from "@/lib/timeline-matrix";
 import { exportTimelineDataExcel, exportTimelineMatrixExcel } from "@/lib/export/excel-timeline";
 import { findSvgInContainer, downloadSvgAsPng, svgToPngDataUrl } from "@/lib/export/svg-to-png";
 import { exportTimelineCurveExcel } from "@/lib/export/excel-chart";
+import { useProfile } from "@/lib/useProfile";
 import { format } from "date-fns";
 
 export default function TimelinePage() {
@@ -24,6 +25,7 @@ export default function TimelinePage() {
   const [downloadingImage, setDownloadingImage] = useState(false);
   const [downloadingChartExcel, setDownloadingChartExcel] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
+  const { canEdit } = useProfile();
 
   async function loadData() {
     setLoading(true);
@@ -113,15 +115,19 @@ export default function TimelinePage() {
           <span className={`rounded-full px-2 py-1 text-xs ${status?.className}`}>{status?.label}</span>
         </td>
         <td className="px-4 py-2 text-right">
-          <button
-            onClick={() => {
-              setEditing(activity ?? null);
-              setFormOpen(true);
-            }}
-            className="text-xs text-brand-blue hover:underline"
-          >
-            Edit
-          </button>
+          {canEdit ? (
+            <button
+              onClick={() => {
+                setEditing(activity ?? null);
+                setFormOpen(true);
+              }}
+              className="text-xs text-brand-blue hover:underline"
+            >
+              Edit
+            </button>
+          ) : (
+            <span className="text-xs text-slate-300">—</span>
+          )}
         </td>
       </tr>
     );
@@ -149,15 +155,17 @@ export default function TimelinePage() {
             >
               Download Excel
             </button>
-            <button
-              onClick={() => {
-                setEditing(null);
-                setFormOpen(true);
-              }}
-              className="rounded-md bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              Tambah kegiatan
-            </button>
+            {canEdit && (
+              <button
+                onClick={() => {
+                  setEditing(null);
+                  setFormOpen(true);
+                }}
+                className="rounded-md bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                Tambah kegiatan
+              </button>
+            )}
           </div>
         </div>
 

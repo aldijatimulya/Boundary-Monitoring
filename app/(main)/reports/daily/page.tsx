@@ -7,12 +7,14 @@ import { supabase } from "@/lib/supabase";
 import { DailyReport, Project } from "@/lib/types";
 import { exportDailyReportPDF } from "@/lib/export/pdf";
 import { exportDailyReportDocx } from "@/lib/export/docx";
+import { useProfile } from "@/lib/useProfile";
 
 export default function DailyReportPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [reports, setReports] = useState<DailyReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
+  const { canEdit } = useProfile();
 
   async function loadData() {
     setLoading(true);
@@ -37,12 +39,14 @@ export default function DailyReportPage() {
       <Topbar title="Daily Report" />
       <main className="flex-1 space-y-6 p-6">
         <div className="flex justify-end">
-          <button
-            onClick={() => setFormOpen(true)}
-            className="rounded-md bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            Tambah laporan harian
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => setFormOpen(true)}
+              className="rounded-md bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Tambah laporan harian
+            </button>
+          )}
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">

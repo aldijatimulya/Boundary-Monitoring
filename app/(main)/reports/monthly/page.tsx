@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { MonthlyReport, Project } from "@/lib/types";
 import { exportMonthlyReportPDF } from "@/lib/export/pdf";
 import { exportMonthlyReportDocx } from "@/lib/export/docx";
+import { useProfile } from "@/lib/useProfile";
 
 const BULAN_NAMA = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -18,6 +19,7 @@ export default function MonthlyReportPage() {
   const [reports, setReports] = useState<MonthlyReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
+  const { canEdit } = useProfile();
 
   async function loadData() {
     setLoading(true);
@@ -43,12 +45,14 @@ export default function MonthlyReportPage() {
       <Topbar title="Monthly Report" />
       <main className="flex-1 space-y-6 p-6">
         <div className="flex justify-end">
-          <button
-            onClick={() => setFormOpen(true)}
-            className="rounded-md bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            Tambah laporan bulanan
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => setFormOpen(true)}
+              className="rounded-md bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Tambah laporan bulanan
+            </button>
+          )}
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">

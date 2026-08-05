@@ -6,6 +6,7 @@ import DocumentUploadForm from "@/components/DocumentUploadForm";
 import { supabase } from "@/lib/supabase";
 import { deleteDocument } from "@/lib/documents";
 import { Cluster, DocumentCategory, DocumentRecord, DOCUMENT_CATEGORY_LABEL, Project } from "@/lib/types";
+import { useProfile } from "@/lib/useProfile";
 import { format } from "date-fns";
 
 const CATEGORY_BADGE: Record<DocumentCategory, string> = {
@@ -30,6 +31,7 @@ export default function DocumentsPage() {
   const [docs, setDocs] = useState<DocumentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const { canEdit } = useProfile();
 
   const [categoryFilter, setCategoryFilter] = useState<DocumentCategory | "semua">("semua");
   const [clusterFilter, setClusterFilter] = useState<string>("semua");
@@ -109,12 +111,14 @@ export default function DocumentsPage() {
               </button>
             ))}
           </div>
-          <button
-            onClick={() => setUploadOpen(true)}
-            className="rounded-md bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            Unggah dokumen
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => setUploadOpen(true)}
+              className="rounded-md bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Unggah dokumen
+            </button>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -199,13 +203,15 @@ export default function DocumentsPage() {
                       <a href={d.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-blue hover:underline">
                         Unduh
                       </a>
-                      <button
-                        onClick={() => handleDelete(d)}
-                        disabled={deletingId === d.id}
-                        className="text-xs text-red-600 hover:underline disabled:opacity-50"
-                      >
-                        {deletingId === d.id ? "Menghapus..." : "Hapus"}
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={() => handleDelete(d)}
+                          disabled={deletingId === d.id}
+                          className="text-xs text-red-600 hover:underline disabled:opacity-50"
+                        >
+                          {deletingId === d.id ? "Menghapus..." : "Hapus"}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
