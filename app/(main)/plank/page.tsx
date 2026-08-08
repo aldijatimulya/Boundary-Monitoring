@@ -132,7 +132,7 @@ export default function PlankReportPage() {
   return (
     <>
       <Topbar title="Plank Report" />
-      <main className="flex-1 space-y-6 p-6">
+      <main className="flex-1 space-y-6 p-4 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <input
             type="text"
@@ -151,7 +151,7 @@ export default function PlankReportPage() {
           )}
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex flex-wrap justify-end gap-2">
           <button
             onClick={() => exportPlankExcel(filtered)}
             disabled={filtered.length === 0}

@@ -57,7 +57,7 @@ export default async function SpatialPage() {
   return (
     <>
       <Topbar title="Spatial Map — Boundary Monitoring System" />
-      <main className="flex-1 space-y-4 p-6">
+      <main className="flex-1 space-y-4 p-4 sm:p-6">
         {geeLayers.length === 0 && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             Belum ada layer GEE yang dikonfigurasi. Tambahkan

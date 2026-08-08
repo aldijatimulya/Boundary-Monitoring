@@ -37,8 +37,8 @@ export default function DailyReportPage() {
   return (
     <>
       <Topbar title="Daily Report" />
-      <main className="flex-1 space-y-6 p-6">
-        <div className="flex justify-end">
+      <main className="flex-1 space-y-6 p-4 sm:p-6">
+        <div className="flex flex-wrap justify-end gap-2">
           {canEdit && (
             <button
               onClick={() => setFormOpen(true)}

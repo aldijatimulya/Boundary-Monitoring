@@ -43,7 +43,7 @@ export default async function DashboardPage() {
   return (
     <>
       <Topbar title="Dashboard — Boundary Monitoring System" />
-      <main className="flex-1 space-y-6 p-6">
+      <main className="flex-1 space-y-6 p-4 sm:p-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard label="Total area (pembebasan)" value={`${formatM2(totalPembebasan)} m²`} />
           <MetricCard label="Area rekonstruksi" value={`${formatM2(totalRekonstruksi)} m²`} />

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useMobileNav } from "@/lib/mobile-nav-context";
 
 const NAV_GROUPS = [
   {
@@ -34,13 +35,16 @@ const NAV_GROUPS = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { open, setOpen } = useMobileNav();
 
-  return (
-    <aside className="hidden w-64 shrink-0 bg-navy-950 text-slate-300 md:flex md:flex-col">
+  const content = (
+    <>
       <div className="flex items-center gap-2 border-b border-white/10 px-5 py-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-blue text-sm font-medium text-white">
-          M
-        </div>
+        <img
+          src="/brand/medcoenergi-logo.png"
+          alt="MedcoEnergi"
+          className="h-9 w-9 shrink-0 object-contain"
+        />
         <div>
           <p className="text-sm font-medium text-white">Boundary Monitor</p>
           <p className="text-xs text-slate-400">Medco E&P SSR</p>
@@ -60,6 +64,7 @@ export default function Sidebar() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={() => setOpen(false)}
                     className={`block rounded-md px-3 py-2 text-sm transition ${
                       active
                         ? "bg-brand-blue/15 text-white"
@@ -74,6 +79,27 @@ export default function Sidebar() {
           </div>
         ))}
       </nav>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop/tablet lanskap: sidebar statis, selalu tampil */}
+      <aside className="hidden w-64 shrink-0 flex-col bg-navy-950 text-slate-300 md:flex">{content}</aside>
+
+      {/* Mobile: drawer yang muncul dari kiri, dikontrol lewat tombol hamburger di Topbar */}
+      {open && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <button
+            aria-label="Tutup menu"
+            onClick={() => setOpen(false)}
+            className="absolute inset-0 bg-black/50"
+          />
+          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-navy-950 text-slate-300 shadow-xl">
+            {content}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

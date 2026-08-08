@@ -48,7 +48,7 @@ export default function ReportMatrixPage() {
   return (
     <>
       <Topbar title="Reconstruction report" />
-      <main className="flex-1 space-y-6 p-6">
+      <main className="flex-1 space-y-6 p-4 sm:p-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-slate-200 bg-white p-5">
             <p className="text-sm text-slate-500">Total target rekonstruksi</p>
@@ -64,7 +64,7 @@ export default function ReportMatrixPage() {
           </div>
         </div>
 
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           <button
             onClick={() => exportReconstructionExcel(rows)}
             disabled={rows.length === 0}

@@ -78,7 +78,7 @@ export default function AnalyticsPage() {
   return (
     <>
       <Topbar title="Analytics — Boundary Monitoring System" />
-      <main className="flex-1 space-y-6 p-6">
+      <main className="flex-1 space-y-6 p-4 sm:p-6">
         {loading && <p className="text-sm text-slate-400">Memuat data...</p>}
 
         {!loading && points.length === 0 && (

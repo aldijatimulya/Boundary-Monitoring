@@ -136,8 +136,8 @@ export default function TimelinePage() {
   return (
     <>
       <Topbar title="Timeline — matriks kegiatan" />
-      <main className="flex-1 space-y-6 p-6">
-        <div className="flex items-center justify-between">
+      <main className="flex-1 space-y-6 p-4 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="rounded-xl border border-slate-200 bg-white px-5 py-4">
             <p className="text-sm text-slate-500">Total estimasi durasi proyek (dihitung otomatis)</p>
             <p className="mt-1 text-2xl font-medium">{totalHari} hari</p>
@@ -173,7 +173,7 @@ export default function TimelinePage() {
 
         {matrix && (
           <>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-sm font-medium text-slate-700">Kurva-S Timeline</h2>
               <div className="flex items-center gap-2">
                 <button
@@ -196,7 +196,7 @@ export default function TimelinePage() {
           </>
         )}
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-medium text-slate-700">Matriks Timeline — Rencana vs Realisasi</h2>
           <button
             onClick={() => matrix && exportTimelineMatrixExcel(matrix)}

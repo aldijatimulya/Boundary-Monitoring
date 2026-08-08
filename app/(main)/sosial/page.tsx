@@ -60,7 +60,7 @@ export default function SosialReportPage() {
   return (
     <>
       <Topbar title="Sosial Report" />
-      <main className="flex-1 space-y-6 p-6">
+      <main className="flex-1 space-y-6 p-4 sm:p-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-slate-200 bg-white p-5">
             <p className="text-sm text-slate-500">Total kasus okupasi/sosial</p>
@@ -94,7 +94,7 @@ export default function SosialReportPage() {
           )}
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex flex-wrap justify-end gap-2">
           <button
             onClick={() => exportSosialExcel(filtered)}
             disabled={filtered.length === 0}

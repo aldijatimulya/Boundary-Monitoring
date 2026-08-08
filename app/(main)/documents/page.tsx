@@ -94,7 +94,7 @@ export default function DocumentsPage() {
   return (
     <>
       <Topbar title="Document Center — Boundary Monitoring System" />
-      <main className="flex-1 space-y-4 p-6">
+      <main className="flex-1 space-y-4 p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-2">
             {(["semua", "shp", "dxf", "pdf", "excel", "foto", "drone", "lainnya"] as const).map((k) => (
