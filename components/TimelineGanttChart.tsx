@@ -3,6 +3,19 @@
 import { useMemo, useRef, useState } from "react";
 import { addDays, differenceInCalendarDays, format, isWithinInterval } from "date-fns";
 import { id as localeId } from "date-fns/locale";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Filter,
+  MapPin,
+  Milestone,
+  Ruler,
+  Users,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 import { TimelineProgressRow } from "@/lib/types";
 
 type Props = {
@@ -13,6 +26,7 @@ type Props = {
 
 type Column = { start: Date; end: Date; days: number; label: string; title?: string };
 type MonthGroup = { label: string; days: number };
+type StatusKey = "selesai" | "on_progress" | "belum_mulai" | "delay";
 
 const STATUS_COLOR: Record<string, { base: string; fill: string; solid: boolean }> = {
   selesai: { base: "bg-emerald-100", fill: "bg-status-done", solid: true },
@@ -21,12 +35,29 @@ const STATUS_COLOR: Record<string, { base: string; fill: string; solid: boolean 
   delay: { base: "bg-red-100", fill: "bg-status-risk", solid: true },
 };
 
-const LEGEND = [
+const LEGEND: { key: StatusKey; label: string; color: string }[] = [
   { key: "selesai", label: "Selesai", color: "bg-status-done" },
   { key: "on_progress", label: "On Progress", color: "bg-status-progress" },
   { key: "belum_mulai", label: "Belum Mulai", color: "bg-status-pending" },
   { key: "delay", label: "Delay", color: "bg-status-risk" },
 ];
+
+// Jenis kegiatan disimpulkan dari nama kegiatan (bukan kolom terpisah di DB),
+// supaya tiap baris timeline dapat ikon + label kategori seperti pada
+// referensi desain -- cukup cocokkan kata kunci yang biasa dipakai di
+// nama kegiatan proyek (Inventarisasi, Rekonstruksi, Pemasangan, Sosialisasi).
+const ACTIVITY_KIND = [
+  { match: /inventarisasi/i, label: "Inventarisasi", icon: ClipboardList, className: "bg-emerald-50 text-emerald-600" },
+  { match: /rekonstruksi/i, label: "Rekonstruksi", icon: Ruler, className: "bg-blue-50 text-blue-600" },
+  { match: /plank/i, label: "Pemasangan Plank", icon: Milestone, className: "bg-teal-50 text-teal-600" },
+  { match: /patok|tanda batas|pemasangan/i, label: "Pemasangan", icon: MapPin, className: "bg-amber-50 text-amber-600" },
+  { match: /sosialisasi/i, label: "Sosialisasi", icon: Users, className: "bg-violet-50 text-violet-600" },
+] as const;
+const DEFAULT_KIND = { label: "Kegiatan", icon: ClipboardList, className: "bg-slate-100 text-slate-500" };
+
+function getActivityKind(nama: string) {
+  return ACTIVITY_KIND.find((k) => k.match.test(nama)) ?? DEFAULT_KIND;
+}
 
 function buildDayColumns(start: Date, end: Date): { columns: Column[]; monthGroups: MonthGroup[] } {
   const columns: Column[] = [];
@@ -59,7 +90,7 @@ function buildWeekColumns(start: Date, end: Date): { columns: Column[]; monthGro
       start: cursor,
       end: colEnd,
       days,
-      label: `Mgg ${weekIndex}`,
+      label: `Mg ${weekIndex}`,
       title: `Minggu ${weekIndex}: ${format(cursor, "d MMM", { locale: localeId })} – ${format(colEnd, "d MMM yyyy", { locale: localeId })}`,
     });
     const monthLabel = format(cursor, "MMMM yyyy", { locale: localeId });
@@ -74,12 +105,34 @@ function buildWeekColumns(start: Date, end: Date): { columns: Column[]; monthGro
   return { columns, monthGroups };
 }
 
-
+const ZOOM_STEPS = [0.75, 1, 1.4, 1.8, 2.4];
 
 export default function TimelineGanttChart({ rows, childrenOf, topLevel }: Props) {
   const captureRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [downloadingImage, setDownloadingImage] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [visibleStatus, setVisibleStatus] = useState<Set<StatusKey>>(
+    new Set(["selesai", "on_progress", "belum_mulai", "delay"])
+  );
+  const [zoomIndex, setZoomIndex] = useState(1); // index ke ZOOM_STEPS, default 1x
+
+  function toggleStatus(key: StatusKey) {
+    setVisibleStatus((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        if (next.size > 1) next.delete(key); // minimal 1 status tetap aktif
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  function scrollByColumns(dir: 1 | -1) {
+    scrollRef.current?.scrollBy({ left: dir * 240, behavior: "smooth" });
+  }
 
   async function handleDownloadImage() {
     if (!captureRef.current) return;
@@ -154,6 +207,13 @@ export default function TimelineGanttChart({ rows, childrenOf, topLevel }: Props
   const today = new Date();
   const showTodayLine = isWithinInterval(today, { start: overallStart, end: overallEnd });
   const todayLeftPct = showTodayLine ? (differenceInCalendarDays(today, overallStart) / totalDays) * 100 : 0;
+  const zoomScale = ZOOM_STEPS[zoomIndex];
+  const baseMinWidth = granularity === "day" ? 900 : Math.max(700, columns.length * 64);
+  const contentMinWidth = Math.round(baseMinWidth * zoomScale);
+
+  function isRowVisible(r: TimelineProgressRow) {
+    return visibleStatus.has(r.status_terhitung as StatusKey);
+  }
 
   function barStyle(r: TimelineProgressRow) {
     const start = new Date(r.tanggal_mulai);
@@ -166,31 +226,77 @@ export default function TimelineGanttChart({ rows, childrenOf, topLevel }: Props
   function renderBar(r: TimelineProgressRow) {
     const colors = STATUS_COLOR[r.status_terhitung] ?? STATUS_COLOR.belum_mulai;
     const style = barStyle(r);
+    const isDelay = r.status_terhitung === "delay";
+    const isDone = r.status_terhitung === "selesai";
     return (
-      <div className="relative h-6" style={style} title={`${r.nama_kegiatan} — ${r.progres_terhitung}%`}>
-        <div className={`h-full w-full rounded ${colors.base}`}>
+      <div className="group relative h-6" style={style} title={`${r.nama_kegiatan} — ${r.progres_terhitung}%`}>
+        <div className={`relative h-full w-full overflow-hidden rounded ${colors.base}`}>
           {!colors.solid && (
             <div
               className={`h-full rounded ${colors.fill}`}
               style={{ width: `${Math.min(Math.max(r.progres_terhitung, 0), 100)}%` }}
             />
           )}
-          {colors.solid && <div className={`h-full w-full rounded ${colors.fill}`} />}
+          {colors.solid && !isDelay && <div className={`h-full w-full rounded ${colors.fill}`} />}
+          {isDelay && (
+            <>
+              {/* Bagian yang sudah tercapai tetap solid merah, sisanya diberi
+                  pola garis-garis (hatch) supaya kelihatan jelas ini bagian
+                  yang molor/terlambat -- meniru pola pada referensi desain. */}
+              <div
+                className={`h-full ${colors.fill}`}
+                style={{ width: `${Math.min(Math.max(r.progres_terhitung, 0), 100)}%` }}
+              />
+              <div
+                className="absolute inset-y-0 right-0 opacity-70"
+                style={{
+                  left: `${Math.min(Math.max(r.progres_terhitung, 0), 100)}%`,
+                  backgroundImage:
+                    "repeating-linear-gradient(135deg, #FCA5A5 0px, #FCA5A5 4px, #FEE2E2 4px, #FEE2E2 8px)",
+                }}
+              />
+            </>
+          )}
         </div>
+        {isDone && (
+          <div className="absolute -right-2 top-1/2 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded-full bg-status-done text-white ring-2 ring-white">
+            <Check className="h-2.5 w-2.5" strokeWidth={3} />
+          </div>
+        )}
       </div>
     );
   }
 
   function renderRow(r: TimelineProgressRow, indent = false) {
+    if (!isRowVisible(r)) return null;
+    const kind = getActivityKind(r.nama_kegiatan);
+    const Icon = kind.icon;
     return (
       <div key={r.id} className="flex border-b border-slate-50 last:border-b-0">
         <div
-          className={`sticky left-0 z-10 w-56 shrink-0 truncate border-r border-slate-100 bg-white px-3 py-2 text-xs ${
-            indent ? "pl-8 text-slate-500" : "font-medium text-slate-700"
+          className={`sticky left-0 z-10 flex w-64 shrink-0 items-start gap-2 border-r border-slate-100 bg-white px-3 py-2 ${
+            indent ? "pl-8" : ""
           }`}
-          title={r.nama_kegiatan}
         >
-          {r.nama_kegiatan}
+          {!indent && (
+            <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${kind.className}`}>
+              <Icon className="h-3.5 w-3.5" />
+            </div>
+          )}
+          <div className="min-w-0">
+            <p
+              className={`truncate text-xs ${indent ? "text-slate-500" : "font-medium text-slate-700"}`}
+              title={r.nama_kegiatan}
+            >
+              {r.dependency_conflict && (
+                <span title="Konflik dependency: mulai sebelum predecessor selesai" className="mr-1 text-red-500">
+                  ⚠
+                </span>
+              )}
+              {r.nama_kegiatan}
+            </p>
+            {!indent && <p className="truncate text-[11px] text-slate-400">{kind.label}</p>}
+          </div>
         </div>
         <div className="relative flex-1 py-1.5">{renderBar(r)}</div>
       </div>
@@ -208,6 +314,34 @@ export default function TimelineGanttChart({ rows, childrenOf, topLevel }: Props
               {l.label}
             </div>
           ))}
+          <div className="relative" data-timeline-export-ignore="true">
+            <button
+              onClick={() => setFilterOpen((v) => !v)}
+              className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs hover:bg-slate-50"
+            >
+              <Filter className="h-3.5 w-3.5" />
+              Filter
+            </button>
+            {filterOpen && (
+              <div className="absolute right-0 z-30 mt-2 w-44 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
+                {LEGEND.map((l) => (
+                  <label
+                    key={l.key}
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={visibleStatus.has(l.key)}
+                      onChange={() => toggleStatus(l.key)}
+                      className="h-3.5 w-3.5 rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
+                    />
+                    <span className={`h-2 w-2 rounded-full ${l.color}`} />
+                    {l.label}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             onClick={handleDownloadImage}
             disabled={downloadingImage}
@@ -219,11 +353,31 @@ export default function TimelineGanttChart({ rows, childrenOf, topLevel }: Props
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <div ref={contentRef} style={{ minWidth: granularity === "day" ? 900 : Math.max(700, columns.length * 64) }}>
+      <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-2" data-timeline-export-ignore="true">
+        <button
+          onClick={() => scrollByColumns(-1)}
+          className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50"
+          aria-label="Geser ke kiri"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <span className="rounded-md border border-slate-200 px-2.5 py-1 text-xs capitalize text-slate-500">
+          {granularity === "day" ? "Hari" : "Minggu"}
+        </span>
+        <button
+          onClick={() => scrollByColumns(1)}
+          className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50"
+          aria-label="Geser ke kanan"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div ref={scrollRef} className="overflow-x-auto">
+        <div ref={contentRef} style={{ minWidth: contentMinWidth }}>
           {/* Header */}
           <div className="flex border-b border-slate-100">
-            <div className="w-56 shrink-0 border-r border-slate-100 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
+            <div className="w-64 shrink-0 border-r border-slate-100 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
               Kegiatan
             </div>
             <div className="flex-1">
@@ -256,20 +410,67 @@ export default function TimelineGanttChart({ rows, childrenOf, topLevel }: Props
           </div>
 
           {/* Rows */}
-          <div className="relative">
+          <div className="relative pb-7">
             {showTodayLine && (
-              <div
-                className="pointer-events-none absolute bottom-0 top-0 z-20 border-l-2 border-dashed border-brand-coral"
-                style={{ left: `calc(14rem + (100% - 14rem) * ${(todayLeftPct / 100).toFixed(4)})` }}
-              />
+              <>
+                <div
+                  className="pointer-events-none absolute bottom-7 top-0 z-20 border-l-2 border-dashed border-brand-coral"
+                  style={{ left: `calc(16rem + (100% - 16rem) * ${(todayLeftPct / 100).toFixed(4)})` }}
+                />
+                <div
+                  className="pointer-events-none absolute bottom-0 z-20 -translate-x-1/2 rounded-full bg-brand-coral px-2 py-0.5 text-[10px] font-medium text-white"
+                  style={{ left: `calc(16rem + (100% - 16rem) * ${(todayLeftPct / 100).toFixed(4)})` }}
+                >
+                  Hari Ini
+                </div>
+              </>
             )}
-            {topLevel.map((r) => (
-              <div key={r.id}>
-                {renderRow(r)}
-                {childrenOf(r.id).map((c) => renderRow(c, true))}
-              </div>
-            ))}
+            {topLevel.map((r) => {
+              const children = childrenOf(r.id);
+              const anyVisible = isRowVisible(r) || children.some(isRowVisible);
+              if (!anyVisible) return null;
+              return (
+                <div key={r.id}>
+                  {renderRow(r)}
+                  {children.map((c) => renderRow(c, true))}
+                </div>
+              );
+            })}
           </div>
+        </div>
+      </div>
+
+      <div
+        className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-5 py-3"
+        data-timeline-export-ignore="true"
+      >
+        <p className="text-xs text-slate-400">Klik pada bar kegiatan untuk melihat detail progres.</p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setZoomIndex((i) => Math.max(0, i - 1))}
+            disabled={zoomIndex === 0}
+            className="flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
+            aria-label="Perkecil"
+          >
+            <ZoomOut className="h-3.5 w-3.5" />
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={ZOOM_STEPS.length - 1}
+            step={1}
+            value={zoomIndex}
+            onChange={(e) => setZoomIndex(Number(e.target.value))}
+            className="h-1 w-24 accent-brand-blue"
+          />
+          <button
+            onClick={() => setZoomIndex((i) => Math.min(ZOOM_STEPS.length - 1, i + 1))}
+            disabled={zoomIndex === ZOOM_STEPS.length - 1}
+            className="flex h-6 w-6 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
+            aria-label="Perbesar"
+          >
+            <ZoomIn className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
     </div>

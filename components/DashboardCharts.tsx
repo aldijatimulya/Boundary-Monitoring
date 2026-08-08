@@ -112,10 +112,21 @@ export function PhaseProgressDonut({
   );
 }
 
-export function ProgressDonut({ percent }: { percent: number }) {
+export function ProgressDonut({
+  percent,
+  color = "#2563eb",
+  size = 140,
+  label,
+}: {
+  percent: number;
+  /** Warna stroke ring (default biru brand). */
+  color?: string;
+  size?: number;
+  /** Teks kecil di bawah angka persen, mis. "Selesai". Kalau kosong, tidak ditampilkan. */
+  label?: string;
+}) {
   const clamped = Math.max(0, Math.min(100, percent));
-  const size = 140;
-  const stroke = 14;
+  const stroke = Math.round(size * 0.1);
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - clamped / 100);
@@ -128,7 +139,7 @@ export function ProgressDonut({ percent }: { percent: number }) {
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="#2563eb"
+          stroke={color}
           strokeWidth={stroke}
           fill="none"
           strokeDasharray={circumference}
@@ -136,9 +147,20 @@ export function ProgressDonut({ percent }: { percent: number }) {
           strokeLinecap="round"
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
-        <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" className="fill-slate-900 text-xl font-semibold">
+        <text
+          x="50%"
+          y={label ? "46%" : "50%"}
+          textAnchor="middle"
+          dominantBaseline="central"
+          className="fill-slate-900 text-xl font-semibold"
+        >
           {clamped}%
         </text>
+        {label && (
+          <text x="50%" y="62%" textAnchor="middle" dominantBaseline="central" className="fill-slate-400 text-[11px]">
+            {label}
+          </text>
+        )}
       </svg>
     </div>
   );
