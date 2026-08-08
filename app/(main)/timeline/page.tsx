@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, Fragment, useMemo } from "react";
 import Topbar from "@/components/Topbar";
 import TimelineForm from "@/components/TimelineForm";
 import TimelineGanttChart from "@/components/TimelineGanttChart";
+import TimelineSummaryCards from "@/components/TimelineSummaryCards";
 import TimelineMatrixTable from "@/components/TimelineMatrixTable";
 import TimelineCurveChart from "@/components/TimelineCurveChart";
 import { supabase } from "@/lib/supabase";
@@ -138,14 +139,9 @@ export default function TimelinePage() {
       <Topbar title="Timeline — matriks kegiatan" />
       <main className="flex-1 space-y-6 p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="rounded-xl border border-slate-200 bg-white px-5 py-4">
-            <p className="text-sm text-slate-500">Total estimasi durasi proyek (dihitung otomatis)</p>
-            <p className="mt-1 text-2xl font-medium">{totalHari} hari</p>
-            {projectStart && (
-              <p className="mt-1 text-xs text-slate-400">
-                {format(new Date(projectStart), "d MMM yyyy")} — {format(new Date(projectEnd), "d MMM yyyy")}
-              </p>
-            )}
+          <div>
+            <h1 className="text-lg font-semibold text-slate-900">Timeline Proyek</h1>
+            <p className="text-sm text-slate-500">Pantau progres setiap kegiatan proyek secara real-time</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -153,7 +149,7 @@ export default function TimelinePage() {
               disabled={rows.length === 0}
               className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm hover:bg-slate-50 disabled:opacity-50"
             >
-              Download Excel
+              Export Excel
             </button>
             {canEdit && (
               <button
@@ -163,11 +159,18 @@ export default function TimelinePage() {
                 }}
                 className="rounded-md bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
               >
-                Tambah kegiatan
+                + Tambah Kegiatan
               </button>
             )}
           </div>
         </div>
+
+        <TimelineSummaryCards
+          topLevel={topLevel}
+          totalHari={totalHari}
+          projectStart={projectStart}
+          projectEnd={projectEnd}
+        />
 
         <TimelineGanttChart rows={rows} topLevel={topLevel} childrenOf={childrenOf} />
 
