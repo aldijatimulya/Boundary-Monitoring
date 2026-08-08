@@ -31,6 +31,7 @@ function roughCentroid(geom: { type: string; coordinates: unknown }): [number, n
 export default function PlankLocationForm({ clusters, onClose, onSaved }: Props) {
   const [namaLokasi, setNamaLokasi] = useState("");
   const [clusterId, setClusterId] = useState<string>("");
+  const [jumlahPlank, setJumlahPlank] = useState<string>("1");
   const [lat, setLat] = useState<string>("");
   const [lng, setLng] = useState<string>("");
   const [geometry, setGeometry] = useState<Record<string, unknown> | null>(null);
@@ -101,11 +102,17 @@ export default function PlankLocationForm({ clusters, onClose, onSaved }: Props)
       setError("Isi nama lokasi plank.");
       return;
     }
+    const jumlahPlankNum = Number(jumlahPlank);
+    if (!jumlahPlankNum || jumlahPlankNum < 1) {
+      setError("Jumlah plank terpasang minimal 1.");
+      return;
+    }
     setError("");
     setSaving(true);
     const { error: dbError } = await supabase.from("plank_locations").insert({
       cluster_id: clusterId || null,
       nama_lokasi: namaLokasi.trim(),
+      jumlah_plank: jumlahPlankNum,
       koordinat_lat: lat ? Number(lat) : null,
       koordinat_lng: lng ? Number(lng) : null,
       geometry,
@@ -135,6 +142,19 @@ export default function PlankLocationForm({ clusters, onClose, onSaved }: Props)
               placeholder="Cth: Plank Batas KM 12 - Cluster A"
               className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
             />
+          </div>
+          <div>
+            <label className="text-sm text-slate-600">Jumlah plank terpasang</label>
+            <input
+              type="number"
+              min={1}
+              value={jumlahPlank}
+              onChange={(e) => setJumlahPlank(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              Dipakai untuk hitung progres Pemasangan Plank di Dashboard (target 150 titik keseluruhan).
+            </p>
           </div>
           <div>
             <label className="text-sm text-slate-600">Cluster terkait (opsional)</label>

@@ -213,6 +213,7 @@ export type PlankLocation = {
   cluster_id: string | null;
   cluster_nama: string | null;
   nama_lokasi: string;
+  jumlah_plank: number;
   koordinat_lat: number | null;
   koordinat_lng: number | null;
   geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon | GeoJSON.Point | null;

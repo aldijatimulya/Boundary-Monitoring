@@ -1,5 +1,6 @@
 import { downloadExcel, excelDate, excelFilename } from "@/lib/export/excel";
 import { formatM2 } from "@/lib/units";
+import { PLANK_TARGET_TITIK } from "@/lib/targets";
 import {
   ReportMatrixRow,
   PatokReportRow,
@@ -63,19 +64,34 @@ export function exportPatokExcel(rows: PatokReportRow[]) {
 }
 
 export function exportPlankExcel(rows: PlankLocation[]) {
+  const total = rows.reduce((s, r) => s + Number(r.jumlah_plank || 0), 0);
   downloadExcel(excelFilename("Plank-Report"), [
     {
       name: "Plank Report",
-      rows: rows.map((p) => ({
-        "Nama Lokasi": p.nama_lokasi,
-        Cluster: p.cluster_nama ?? "-",
-        Latitude: p.koordinat_lat ?? "-",
-        Longitude: p.koordinat_lng ?? "-",
-        "Data Spasial (KML/GeoJSON)": p.geometry ? "Ada" : "Tidak ada",
-        "Jumlah Foto": p.foto_urls?.length ?? 0,
-        Keterangan: p.keterangan ?? "-",
-        "Tanggal Dibuat": excelDate(p.created_at),
-      })),
+      rows: [
+        ...rows.map((p) => ({
+          "Nama Lokasi": p.nama_lokasi,
+          Cluster: p.cluster_nama ?? "-",
+          "Jumlah Plank Terpasang": p.jumlah_plank,
+          Latitude: p.koordinat_lat ?? "-",
+          Longitude: p.koordinat_lng ?? "-",
+          "Data Spasial (KML/GeoJSON)": p.geometry ? "Ada" : "Tidak ada",
+          "Jumlah Foto": p.foto_urls?.length ?? 0,
+          Keterangan: p.keterangan ?? "-",
+          "Tanggal Dibuat": excelDate(p.created_at),
+        })),
+        {
+          "Nama Lokasi": "TOTAL KESELURUHAN",
+          Cluster: "",
+          "Jumlah Plank Terpasang": total,
+          Latitude: "",
+          Longitude: "",
+          "Data Spasial (KML/GeoJSON)": "",
+          "Jumlah Foto": "",
+          Keterangan: `Target: ${PLANK_TARGET_TITIK} titik (${Math.round((total / PLANK_TARGET_TITIK) * 1000) / 10}%)`,
+          "Tanggal Dibuat": "",
+        },
+      ],
     },
   ]);
 }

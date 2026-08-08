@@ -40,6 +40,78 @@ export function ClusterProgressBarChart({ rows }: { rows: ClusterChartRow[] }) {
   );
 }
 
+export type PhaseSegment = { label: string; percent: number; color: string; detail: string };
+
+/**
+ * Donut 4-segmen: tiap komponen (Inventarisasi Data, Rekonstruksi, Patok,
+ * Plank) dapat "slot" 1/4 lingkaran masing-masing, terisi sesuai progres
+ * komponen itu sendiri (0-100% dari slotnya) -- jadi progres satu-satu tetap
+ * kelihatan jelas per warna, sementara angka di tengah adalah rata-rata
+ * keempatnya (progres keseluruhan).
+ */
+export function PhaseProgressDonut({
+  segments,
+  overallPercent,
+}: {
+  segments: PhaseSegment[];
+  overallPercent: number;
+}) {
+  const size = 190;
+  const stroke = 16;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const n = segments.length;
+  const slotLength = circumference / n;
+  const gapLength = slotLength * 0.06;
+
+  return (
+    <div className="flex items-center justify-center">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        {segments.map((seg, i) => (
+          <circle
+            key={`track-${seg.label}`}
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="#eef1f5"
+            strokeWidth={stroke}
+            fill="none"
+            strokeDasharray={`${slotLength - gapLength} ${circumference - (slotLength - gapLength)}`}
+            strokeDashoffset={-(i * slotLength)}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          />
+        ))}
+        {segments.map((seg, i) => {
+          const clamped = Math.max(0, Math.min(100, seg.percent));
+          const filled = (clamped / 100) * (slotLength - gapLength);
+          if (filled <= 0) return null;
+          return (
+            <circle
+              key={`fill-${seg.label}`}
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              stroke={seg.color}
+              strokeWidth={stroke}
+              fill="none"
+              strokeLinecap="round"
+              strokeDasharray={`${filled} ${circumference - filled}`}
+              strokeDashoffset={-(i * slotLength)}
+              transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            />
+          );
+        })}
+        <text x="50%" y="46%" textAnchor="middle" dominantBaseline="central" className="fill-slate-900 text-2xl font-semibold">
+          {Math.round(overallPercent)}%
+        </text>
+        <text x="50%" y="60%" textAnchor="middle" dominantBaseline="central" className="fill-slate-400 text-[10px]">
+          Progres Total
+        </text>
+      </svg>
+    </div>
+  );
+}
+
 export function ProgressDonut({ percent }: { percent: number }) {
   const clamped = Math.max(0, Math.min(100, percent));
   const size = 140;

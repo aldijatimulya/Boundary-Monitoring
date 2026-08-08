@@ -401,6 +401,10 @@ create table plank_locations (
   project_id uuid references projects(id),
   cluster_id uuid references clusters(id) on delete set null,
   nama_lokasi text not null,
+  -- Jumlah plank yang benar-benar terpasang di lokasi ini (satu lokasi bisa
+  -- lebih dari satu plank) -- dipakai untuk hitung progres "Pemasangan
+  -- Plank" di Dashboard: SUM(jumlah_plank) / target keseluruhan (150 titik).
+  jumlah_plank integer not null default 1 check (jumlah_plank >= 1),
   koordinat_lat numeric,
   koordinat_lng numeric,
   -- GeoJSON Point/Polygon dari upload KML/GeoJSON (opsional) -- disinkronkan
@@ -419,6 +423,7 @@ select
   p.cluster_id,
   c.name as cluster_nama,
   p.nama_lokasi,
+  p.jumlah_plank,
   p.koordinat_lat,
   p.koordinat_lng,
   p.geometry,
