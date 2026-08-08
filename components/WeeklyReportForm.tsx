@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import PhotoUpload from "@/components/PhotoUpload";
+import RincianKegiatanInput from "@/components/report/RincianKegiatanInput";
+import type { RincianKegiatanItem } from "@/lib/types";
 
 type Props = {
   projectId: string;
@@ -21,6 +23,7 @@ export default function WeeklyReportForm({ projectId, onClose, onSaved }: Props)
     kendala: "",
     mitigasi: "",
   });
+  const [rincianKegiatan, setRincianKegiatan] = useState<RincianKegiatanItem[]>([]);
   const [fotoUrls, setFotoUrls] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -46,6 +49,7 @@ export default function WeeklyReportForm({ projectId, onClose, onSaved }: Props)
       progres_realisasi_persen: form.progres_realisasi_persen ? Number(form.progres_realisasi_persen) : null,
       kendala: form.kendala || null,
       mitigasi: form.mitigasi || null,
+      rincian_kegiatan: rincianKegiatan,
       foto_urls: fotoUrls,
     });
     setSaving(false);
@@ -98,6 +102,8 @@ export default function WeeklyReportForm({ projectId, onClose, onSaved }: Props)
             <label className="text-sm text-slate-600">Mitigasi</label>
             <textarea value={form.mitigasi} onChange={set("mitigasi")} rows={2} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm" />
           </div>
+
+          <RincianKegiatanInput items={rincianKegiatan} onChange={setRincianKegiatan} />
 
           <PhotoUpload folder="weekly" urls={fotoUrls} onChange={setFotoUrls} />
 

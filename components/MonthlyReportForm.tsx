@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import PhotoUpload from "@/components/PhotoUpload";
+import RincianKegiatanInput from "@/components/report/RincianKegiatanInput";
+import type { RincianKegiatanItem } from "@/lib/types";
 
 type Props = {
   projectId: string;
@@ -26,6 +28,7 @@ export default function MonthlyReportForm({ projectId, onClose, onSaved }: Props
     analisis_kendala: "",
     proyeksi_bulan_depan: "",
   });
+  const [rincianKegiatan, setRincianKegiatan] = useState<RincianKegiatanItem[]>([]);
   const [lampiranUrls, setLampiranUrls] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -46,6 +49,7 @@ export default function MonthlyReportForm({ projectId, onClose, onSaved }: Props
       progres_realisasi_persen: form.progres_realisasi_persen ? Number(form.progres_realisasi_persen) : null,
       analisis_kendala: form.analisis_kendala || null,
       proyeksi_bulan_depan: form.proyeksi_bulan_depan || null,
+      rincian_kegiatan: rincianKegiatan,
       lampiran_urls: lampiranUrls,
     });
     setSaving(false);
@@ -98,6 +102,8 @@ export default function MonthlyReportForm({ projectId, onClose, onSaved }: Props
             <label className="text-sm text-slate-600">Proyeksi bulan depan</label>
             <textarea value={form.proyeksi_bulan_depan} onChange={set("proyeksi_bulan_depan")} rows={2} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm" />
           </div>
+
+          <RincianKegiatanInput items={rincianKegiatan} onChange={setRincianKegiatan} />
 
           <PhotoUpload folder="monthly" urls={lampiranUrls} onChange={setLampiranUrls} />
 

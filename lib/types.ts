@@ -119,6 +119,14 @@ export type TimelineProgressRow = {
   predecessor_selesai: string | null;
 };
 
+// Satu baris breakdown progres per jenis kegiatan pada sebuah laporan
+// (Inventarisasi, Rekonstruksi, Pemasangan Patok, Pemasangan Plank, dst),
+// diisi manual per laporan dan disimpan sebagai jsonb di kolom `rincian_kegiatan`.
+export type RincianKegiatanItem = {
+  jenis: string;
+  persen: number;
+};
+
 export type DailyReport = {
   id: string;
   project_id: string;
@@ -131,6 +139,9 @@ export type DailyReport = {
   kegiatan: string;
   target: string | null;
   realisasi: string | null;
+  target_persen: number | null;
+  realisasi_persen: number | null;
+  rincian_kegiatan: RincianKegiatanItem[] | null;
   cuaca: string | null;
   koordinat_lat: number | null;
   koordinat_lng: number | null;
@@ -152,6 +163,7 @@ export type WeeklyReport = {
   ringkasan_capaian: string | null;
   progres_rencana_persen: number | null;
   progres_realisasi_persen: number | null;
+  rincian_kegiatan: RincianKegiatanItem[] | null;
   kendala: string | null;
   mitigasi: string | null;
   foto_urls: string[] | null;
@@ -165,6 +177,7 @@ export type MonthlyReport = {
   ringkasan_eksekutif: string | null;
   progres_rencana_persen: number | null;
   progres_realisasi_persen: number | null;
+  rincian_kegiatan: RincianKegiatanItem[] | null;
   analisis_kendala: string | null;
   proyeksi_bulan_depan: string | null;
   lampiran_urls: string[] | null;

@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { DailyReport, WeeklyReport, MonthlyReport } from "@/lib/types";
+import { DailyReport, WeeklyReport, MonthlyReport, RincianKegiatanItem } from "@/lib/types";
 import { loadReportPhotos } from "@/lib/export/images";
 
 const CLIENT_NAME = "PT Medco E&P South Sumatra Region";
@@ -56,6 +56,27 @@ async function addPhotosSection(doc: jsPDF, startY: number, urls: string[] | nul
   return y;
 }
 
+// Sisipkan tabel kecil "Rincian Kegiatan" (jenis + persen) setelah tabel data
+// utama, kalau laporan punya breakdown per jenis kegiatan. Mengembalikan Y
+// setelah tabel supaya bagian berikutnya (foto/tanda tangan) tidak tertumpuk.
+function addRincianKegiatanSection(doc: jsPDF, startY: number, items: RincianKegiatanItem[] | null | undefined): number {
+  if (!items || items.length === 0) return startY;
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text("Rincian Kegiatan", MARGIN, startY);
+
+  autoTable(doc, {
+    startY: startY + 3,
+    theme: "grid",
+    styles: { fontSize: 9, cellPadding: 2 },
+    head: [["Jenis Kegiatan", "Realisasi"]],
+    body: items.map((it) => [it.jenis, `${it.persen}%`]),
+  });
+
+  return (doc as any).lastAutoTable.finalY ?? startY + 10;
+}
+
 function addHeader(doc: jsPDF, title: string, subtitle: string) {
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
@@ -100,6 +121,8 @@ export async function exportDailyReportPDF(report: DailyReport) {
       ["Kegiatan", report.kegiatan],
       ["Target", report.target ?? "-"],
       ["Realisasi", report.realisasi ?? "-"],
+      ["Target (%)", report.target_persen != null ? `${report.target_persen}%` : "-"],
+      ["Realisasi (%)", report.realisasi_persen != null ? `${report.realisasi_persen}%` : "-"],
       ["Material digunakan", report.material_digunakan ?? "-"],
       ["Permasalahan", report.permasalahan ?? "-"],
       ["Mitigasi", report.mitigasi ?? "-"],
@@ -109,7 +132,8 @@ export async function exportDailyReportPDF(report: DailyReport) {
   });
 
   const tableEndY = (doc as any).lastAutoTable.finalY ?? 44;
-  const afterPhotosY = await addPhotosSection(doc, tableEndY + 10, report.foto_urls);
+  const rincianEndY = addRincianKegiatanSection(doc, tableEndY + 8, report.rincian_kegiatan);
+  const afterPhotosY = await addPhotosSection(doc, rincianEndY + 10, report.foto_urls);
   addSignatureBlock(doc, afterPhotosY + 20);
   doc.save(`Laporan-Harian-${report.tanggal}.pdf`);
 }
@@ -137,7 +161,8 @@ export async function exportWeeklyReportPDF(report: WeeklyReport) {
   });
 
   const tableEndY = (doc as any).lastAutoTable.finalY ?? 44;
-  const afterPhotosY = await addPhotosSection(doc, tableEndY + 10, report.foto_urls);
+  const rincianEndY = addRincianKegiatanSection(doc, tableEndY + 8, report.rincian_kegiatan);
+  const afterPhotosY = await addPhotosSection(doc, rincianEndY + 10, report.foto_urls);
   addSignatureBlock(doc, afterPhotosY + 20);
   doc.save(`Laporan-Mingguan-Minggu-${report.minggu_ke}.pdf`);
 }
@@ -170,7 +195,8 @@ export async function exportMonthlyReportPDF(report: MonthlyReport) {
   });
 
   const tableEndY = (doc as any).lastAutoTable.finalY ?? 44;
-  const afterPhotosY = await addPhotosSection(doc, tableEndY + 10, report.lampiran_urls);
+  const rincianEndY = addRincianKegiatanSection(doc, tableEndY + 8, report.rincian_kegiatan);
+  const afterPhotosY = await addPhotosSection(doc, rincianEndY + 10, report.lampiran_urls);
   addSignatureBlock(doc, afterPhotosY + 20);
   doc.save(`Laporan-Bulanan-${BULAN_NAMA[report.bulan - 1]}-${report.tahun}.pdf`);
 }

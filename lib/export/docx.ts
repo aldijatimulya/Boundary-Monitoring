@@ -1,5 +1,5 @@
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, ImageRun, WidthType, HeadingLevel } from "docx";
-import { DailyReport, WeeklyReport, MonthlyReport } from "@/lib/types";
+import { DailyReport, WeeklyReport, MonthlyReport, RincianKegiatanItem } from "@/lib/types";
 import { loadReportPhotos } from "@/lib/export/images";
 
 const CLIENT_NAME = "PT Medco E&P South Sumatra Region";
@@ -40,6 +40,19 @@ async function buildPhotoParagraphs(urls: string[] | null | undefined): Promise<
   return paragraphs;
 }
 
+// Bangun paragraf "Rincian Kegiatan" (jenis + persen per baris) untuk disisipkan
+// sebelum dokumentasi foto, kalau laporan punya breakdown per jenis kegiatan.
+function buildRincianKegiatanParagraphs(items: RincianKegiatanItem[] | null | undefined): Paragraph[] {
+  if (!items || items.length === 0) return [];
+  const paragraphs: Paragraph[] = [
+    new Paragraph({ text: "Rincian Kegiatan", heading: HeadingLevel.HEADING_2, spacing: { before: 300, after: 100 } }),
+  ];
+  for (const item of items) {
+    paragraphs.push(new Paragraph({ text: `${item.jenis}: ${item.persen}%`, bullet: { level: 0 } }));
+  }
+  return paragraphs;
+}
+
 function fieldRow(label: string, value: string) {
   return new TableRow({
     children: [
@@ -65,7 +78,13 @@ async function saveDoc(doc: Document, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-function buildDocument(title: string, subtitle: string, rows: TableRow[], photoParagraphs: Paragraph[] = []) {
+function buildDocument(
+  title: string,
+  subtitle: string,
+  rows: TableRow[],
+  rincianParagraphs: Paragraph[] = [],
+  photoParagraphs: Paragraph[] = []
+) {
   return new Document({
     sections: [
       {
@@ -75,6 +94,7 @@ function buildDocument(title: string, subtitle: string, rows: TableRow[], photoP
           new Paragraph({ text: title, heading: HeadingLevel.HEADING_1 }),
           new Paragraph({ text: subtitle, spacing: { after: 200 } }),
           new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows }),
+          ...rincianParagraphs,
           ...photoParagraphs,
           new Paragraph({ text: "", spacing: { before: 400 } }),
           new Paragraph({ text: "Dibuat oleh,\t\t\t\tDisetujui oleh," }),
@@ -100,14 +120,17 @@ export async function exportDailyReportDocx(report: DailyReport) {
     fieldRow("Kegiatan", report.kegiatan),
     fieldRow("Target", report.target ?? "-"),
     fieldRow("Realisasi", report.realisasi ?? "-"),
+    fieldRow("Target (%)", report.target_persen != null ? `${report.target_persen}%` : "-"),
+    fieldRow("Realisasi (%)", report.realisasi_persen != null ? `${report.realisasi_persen}%` : "-"),
     fieldRow("Material digunakan", report.material_digunakan ?? "-"),
     fieldRow("Permasalahan", report.permasalahan ?? "-"),
     fieldRow("Mitigasi", report.mitigasi ?? "-"),
     fieldRow("Kesimpulan", report.kesimpulan ?? "-"),
     fieldRow("Rencana besok", report.rencana_besok ?? "-"),
   ];
+  const rincianParagraphs = buildRincianKegiatanParagraphs(report.rincian_kegiatan);
   const photoParagraphs = await buildPhotoParagraphs(report.foto_urls);
-  const doc = buildDocument("Laporan Harian Kegiatan Lapangan", `Tanggal: ${report.tanggal}`, rows, photoParagraphs);
+  const doc = buildDocument("Laporan Harian Kegiatan Lapangan", `Tanggal: ${report.tanggal}`, rows, rincianParagraphs, photoParagraphs);
   await saveDoc(doc, `Laporan-Harian-${report.tanggal}.docx`);
 }
 
@@ -119,11 +142,13 @@ export async function exportWeeklyReportDocx(report: WeeklyReport) {
     fieldRow("Kendala", report.kendala ?? "-"),
     fieldRow("Mitigasi", report.mitigasi ?? "-"),
   ];
+  const rincianParagraphs = buildRincianKegiatanParagraphs(report.rincian_kegiatan);
   const photoParagraphs = await buildPhotoParagraphs(report.foto_urls);
   const doc = buildDocument(
     `Laporan Mingguan — Minggu ke-${report.minggu_ke}`,
     `Periode: ${report.periode_mulai} — ${report.periode_selesai}`,
     rows,
+    rincianParagraphs,
     photoParagraphs
   );
   await saveDoc(doc, `Laporan-Mingguan-Minggu-${report.minggu_ke}.docx`);
@@ -142,11 +167,13 @@ export async function exportMonthlyReportDocx(report: MonthlyReport) {
     fieldRow("Analisis kendala", report.analisis_kendala ?? "-"),
     fieldRow("Proyeksi bulan depan", report.proyeksi_bulan_depan ?? "-"),
   ];
+  const rincianParagraphs = buildRincianKegiatanParagraphs(report.rincian_kegiatan);
   const photoParagraphs = await buildPhotoParagraphs(report.lampiran_urls);
   const doc = buildDocument(
     "Laporan Bulanan Progres Proyek",
     `Periode: ${BULAN_NAMA[report.bulan - 1] ?? report.bulan} ${report.tahun}`,
     rows,
+    rincianParagraphs,
     photoParagraphs
   );
   await saveDoc(doc, `Laporan-Bulanan-${BULAN_NAMA[report.bulan - 1]}-${report.tahun}.docx`);

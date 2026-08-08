@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import PhotoUpload from "@/components/PhotoUpload";
+import RincianKegiatanInput from "@/components/report/RincianKegiatanInput";
+import type { RincianKegiatanItem } from "@/lib/types";
 
 type Props = {
   projectId: string;
@@ -23,12 +25,15 @@ export default function DailyReportForm({ projectId, onClose, onSaved }: Props) 
     kegiatan: "",
     target: "",
     realisasi: "",
+    target_persen: "",
+    realisasi_persen: "",
     material_digunakan: "",
     permasalahan: "",
     mitigasi: "",
     kesimpulan: "",
     rencana_besok: "",
   });
+  const [rincianKegiatan, setRincianKegiatan] = useState<RincianKegiatanItem[]>([]);
   const [fotoUrls, setFotoUrls] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -54,6 +59,9 @@ export default function DailyReportForm({ projectId, onClose, onSaved }: Props) 
       kegiatan: form.kegiatan,
       target: form.target || null,
       realisasi: form.realisasi || null,
+      target_persen: form.target_persen ? Number(form.target_persen) : null,
+      realisasi_persen: form.realisasi_persen ? Number(form.realisasi_persen) : null,
+      rincian_kegiatan: rincianKegiatan,
       material_digunakan: form.material_digunakan || null,
       permasalahan: form.permasalahan || null,
       mitigasi: form.mitigasi || null,
@@ -132,6 +140,19 @@ export default function DailyReportForm({ projectId, onClose, onSaved }: Props) 
               <textarea value={form.realisasi} onChange={set("realisasi")} rows={2} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm" />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm text-slate-600">Target hari ini (%)</label>
+              <input type="number" min={0} max={100} value={form.target_persen} onChange={set("target_persen")} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="text-sm text-slate-600">Realisasi (%)</label>
+              <input type="number" min={0} max={100} value={form.realisasi_persen} onChange={set("realisasi_persen")} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm" />
+            </div>
+          </div>
+
+          <RincianKegiatanInput items={rincianKegiatan} onChange={setRincianKegiatan} />
+
           <div>
             <label className="text-sm text-slate-600">Material digunakan</label>
             <input value={form.material_digunakan} onChange={set("material_digunakan")} className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm" />
