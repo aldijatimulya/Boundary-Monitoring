@@ -2,22 +2,31 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Cluster } from "@/lib/types";
+import { Cluster, SosialReportRow } from "@/lib/types";
 
 type Props = {
   clusters: Cluster[];
   defaultClusterId?: string;
+  /** Kalau diisi, form jadi mode edit (update baris ini) alih-alih tambah baru. */
+  editRow?: SosialReportRow;
   onClose: () => void;
   onSaved: () => void;
 };
 
-export default function SosialEntryForm({ clusters, defaultClusterId, onClose, onSaved }: Props) {
-  const [clusterId, setClusterId] = useState(defaultClusterId ?? clusters[0]?.id ?? "");
-  const [luas, setLuas] = useState(0);
-  const [jenis, setJenis] = useState("");
-  const [pemilik, setPemilik] = useState("");
-  const [keterangan, setKeterangan] = useState("");
-  const [tanggal, setTanggal] = useState(new Date().toISOString().slice(0, 10));
+const STATUS_OPTIONS: { value: SosialReportRow["status"]; label: string }[] = [
+  { value: "proses", label: "Proses" },
+  { value: "selesai", label: "Selesai" },
+];
+
+export default function SosialEntryForm({ clusters, defaultClusterId, editRow, onClose, onSaved }: Props) {
+  const isEdit = Boolean(editRow);
+  const [clusterId, setClusterId] = useState(editRow?.cluster_id ?? defaultClusterId ?? clusters[0]?.id ?? "");
+  const [luas, setLuas] = useState(editRow?.luas_okupasi_m2 ?? 0);
+  const [jenis, setJenis] = useState(editRow?.jenis_okupasi ?? "");
+  const [pemilik, setPemilik] = useState(editRow?.pemilik_lahan ?? "");
+  const [keterangan, setKeterangan] = useState(editRow?.keterangan ?? "");
+  const [status, setStatus] = useState<SosialReportRow["status"]>(editRow?.status ?? "proses");
+  const [tanggal, setTanggal] = useState(editRow?.tanggal_catat ?? new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -29,14 +38,18 @@ export default function SosialEntryForm({ clusters, defaultClusterId, onClose, o
     }
     setError("");
     setSaving(true);
-    const { error: dbError } = await supabase.from("sosial_report").insert({
+    const payload = {
       cluster_id: clusterId,
       luas_okupasi_m2: luas,
       jenis_okupasi: jenis || null,
       pemilik_lahan: pemilik || null,
       keterangan: keterangan || null,
+      status,
       tanggal_catat: tanggal,
-    });
+    };
+    const { error: dbError } = isEdit
+      ? await supabase.from("sosial_report").update(payload).eq("id", editRow!.id)
+      : await supabase.from("sosial_report").insert(payload);
     setSaving(false);
     if (dbError) {
       setError(dbError.message);
@@ -48,7 +61,9 @@ export default function SosialEntryForm({ clusters, defaultClusterId, onClose, o
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <form onSubmit={handleSubmit} className="w-full max-w-md rounded-xl bg-white p-6">
-        <h2 className="text-base font-medium text-slate-900">Tambah data okupasi/permasalahan sosial</h2>
+        <h2 className="text-base font-medium text-slate-900">
+          {isEdit ? "Edit data okupasi/permasalahan sosial" : "Tambah data okupasi/permasalahan sosial"}
+        </h2>
 
         <div className="mt-4 space-y-3">
           <div>
@@ -105,6 +120,20 @@ export default function SosialEntryForm({ clusters, defaultClusterId, onClose, o
             />
           </div>
           <div>
+            <label className="text-sm text-slate-600">Status penanganan</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as SosialReportRow["status"])}
+              className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
+            >
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label className="text-sm text-slate-600">Keterangan</label>
             <textarea
               value={keterangan}
@@ -127,7 +156,7 @@ export default function SosialEntryForm({ clusters, defaultClusterId, onClose, o
             disabled={saving}
             className="rounded-md bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {saving ? "Menyimpan..." : "Simpan"}
+            {saving ? "Menyimpan..." : isEdit ? "Simpan perubahan" : "Simpan"}
           </button>
         </div>
       </form>

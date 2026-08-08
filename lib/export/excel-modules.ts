@@ -16,6 +16,8 @@ const STATUS_TEXT: Record<string, string> = {
   need_follow_up: "Perlu tindak lanjut",
   terpasang: "Sudah terpasang",
   belum_terpasang: "Belum terpasang",
+  proses: "Proses",
+  selesai: "Selesai",
 };
 
 // Kolom mengikuti persis field yang ada di view v_report_matrix_latest / tabel
@@ -110,6 +112,8 @@ export function exportSosialExcel(rows: SosialReportRow[]) {
           "Pemilik Lahan": r.pemilik_lahan ?? "-",
           "Jenis Okupasi": r.jenis_okupasi ?? "-",
           "Luas Okupasi (m²)": r.luas_okupasi_m2,
+          "Patok Terpasang": r.patok_terpasang,
+          Status: STATUS_TEXT[r.status] ?? r.status,
           Keterangan: r.keterangan ?? "-",
           "Tanggal Catat": excelDate(r.tanggal_catat),
         })),
@@ -122,6 +126,8 @@ export function exportSosialExcel(rows: SosialReportRow[]) {
           "Pemilik Lahan": "",
           "Jenis Okupasi": "",
           "Luas Okupasi (m²)": total,
+          "Patok Terpasang": "",
+          Status: "",
           Keterangan: "",
           "Tanggal Catat": "",
         },

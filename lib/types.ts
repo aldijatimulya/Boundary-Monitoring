@@ -204,6 +204,7 @@ export const STATUS_LABEL: Record<string, { label: string; className: string }> 
   selesai: { label: "Selesai", className: "bg-emerald-100 text-emerald-700" },
   terpasang: { label: "Sudah terpasang", className: "bg-emerald-100 text-emerald-700" },
   belum_terpasang: { label: "Belum terpasang", className: "bg-slate-100 text-slate-600" },
+  proses: { label: "Proses", className: "bg-amber-100 text-amber-700" },
 };
 
 // ---- Plank Report ----
@@ -234,7 +235,11 @@ export type SosialReportRow = {
   jenis_okupasi: string | null;
   pemilik_lahan: string | null;
   keterangan: string | null;
+  status: "proses" | "selesai";
   tanggal_catat: string;
+  // Jumlah patok terpasang di cluster kasus ini (join ke v_patok_report_latest,
+  // bukan kolom sosial_report sendiri) -- lihat migration_sprint12.
+  patok_terpasang: number;
 };
 
 // ---- Inventarisasi Report ----
