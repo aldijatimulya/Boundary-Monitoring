@@ -84,8 +84,13 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Desktop/tablet lanskap: sidebar statis, selalu tampil */}
-      <aside className="hidden w-64 shrink-0 flex-col bg-navy-950 text-slate-300 md:flex">{content}</aside>
+      {/* Desktop/tablet lanskap: sidebar nempel di layar (sticky), tidak ikut
+          scroll bersama konten halaman -- tinggi dikunci selayar (h-screen)
+          dan daftar menu (nav) di dalamnya punya scroll sendiri kalau menu-nya
+          lebih panjang dari tinggi layar. */}
+      <aside className="hidden w-64 shrink-0 flex-col bg-navy-950 text-slate-300 md:sticky md:top-0 md:flex md:h-screen">
+        {content}
+      </aside>
 
       {/* Mobile: drawer yang muncul dari kiri, dikontrol lewat tombol hamburger di Topbar */}
       {open && (
