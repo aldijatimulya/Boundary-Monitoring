@@ -22,6 +22,8 @@ const CATEGORY_ACCEPT: Record<DocumentCategory, string> = {
   lainnya: "*",
 };
 
+const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB per dokumen
+
 export default function DocumentUploadForm({ projectId, clusters, onClose, onSaved }: Props) {
   const [kategori, setKategori] = useState<DocumentCategory>("pdf");
   const [clusterId, setClusterId] = useState<string>("");
@@ -40,8 +42,13 @@ export default function DocumentUploadForm({ projectId, clusters, onClose, onSav
 
     setUploading(true);
     const folder = clusterId || "umum";
+    const { data: authData } = await supabase.auth.getUser();
 
     for (const file of Array.from(files)) {
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        setError((prev) => (prev ? `${prev}\n` : "") + `${file.name} dilewati: ukuran melebihi 100 MB.`);
+        continue;
+      }
       setProgress(`Mengunggah ${file.name}...`);
       try {
         const { publicUrl } = await uploadDocumentFile(file, folder);
@@ -52,6 +59,7 @@ export default function DocumentUploadForm({ projectId, clusters, onClose, onSav
           kategori,
           file_url: publicUrl,
           ukuran_kb: Math.round(file.size / 1024),
+          uploaded_by: authData.user?.id ?? null,
         });
         if (dbError) throw dbError;
       } catch (err: any) {
@@ -116,6 +124,7 @@ export default function DocumentUploadForm({ projectId, clusters, onClose, onSav
                 satu .zip lalu unggah itu saja.
               </p>
             )}
+            <p className="mt-1 text-xs text-slate-400">Maksimal ukuran file per dokumen adalah 100 MB.</p>
           </div>
 
           {uploading && progress && <p className="text-xs text-slate-400">{progress}</p>}
