@@ -119,6 +119,15 @@ export type TimelineProgressRow = {
   predecessor_selesai: string | null;
 };
 
+// Satu baris "jenis kegiatan + persen realisasi" di dalam form Rincian
+// Kegiatan (disimpan sebagai jsonb di kolom rincian_kegiatan pada
+// daily/weekly/monthly report). Dipakai oleh RincianKegiatanInput (form),
+// RincianKegiatanCard (tampilan progress bar), dan ReportDetailDrawer.
+export type RincianKegiatanItem = {
+  jenis: string;
+  persen: number;
+};
+
 export type DailyReport = {
   id: string;
   project_id: string;
@@ -140,6 +149,9 @@ export type DailyReport = {
   kesimpulan: string | null;
   rencana_besok: string | null;
   foto_urls: string[] | null;
+  target_persen: number | null;
+  realisasi_persen: number | null;
+  rincian_kegiatan: RincianKegiatanItem[] | null;
   status_approval: "draft" | "submitted" | "approved";
 };
 
@@ -155,6 +167,7 @@ export type WeeklyReport = {
   kendala: string | null;
   mitigasi: string | null;
   foto_urls: string[] | null;
+  rincian_kegiatan: RincianKegiatanItem[] | null;
 };
 
 export type MonthlyReport = {
@@ -168,6 +181,7 @@ export type MonthlyReport = {
   analisis_kendala: string | null;
   proyeksi_bulan_depan: string | null;
   lampiran_urls: string[] | null;
+  rincian_kegiatan: RincianKegiatanItem[] | null;
 };
 
 export type DocumentCategory = "shp" | "dxf" | "pdf" | "excel" | "foto" | "drone" | "lainnya";

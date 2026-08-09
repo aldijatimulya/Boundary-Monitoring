@@ -113,6 +113,9 @@ create table daily_reports (
   kesimpulan text,
   rencana_besok text,
   foto_urls text[],
+  target_persen numeric(5,2),
+  realisasi_persen numeric(5,2),
+  rincian_kegiatan jsonb,
   dibuat_oleh uuid references profiles(id),
   disetujui_oleh uuid references profiles(id),
   status_approval text check (status_approval in ('draft','submitted','approved')) default 'draft',
@@ -132,6 +135,7 @@ create table weekly_reports (
   kendala text,
   mitigasi text,
   foto_urls text[],
+  rincian_kegiatan jsonb,
   dibuat_oleh uuid references profiles(id),
   disetujui_oleh uuid references profiles(id),
   created_at timestamptz default now()
@@ -149,6 +153,7 @@ create table monthly_reports (
   analisis_kendala text,
   proyeksi_bulan_depan text,
   lampiran_urls text[],
+  rincian_kegiatan jsonb,
   dibuat_oleh uuid references profiles(id),
   disetujui_oleh uuid references profiles(id),
   created_at timestamptz default now()
