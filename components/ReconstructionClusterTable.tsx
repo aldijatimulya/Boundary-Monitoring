@@ -147,7 +147,7 @@ export default function ReconstructionClusterTable({ rows, loading, canEdit, geo
               <th className="px-4 py-3 font-normal text-right">Realisasi (m²)</th>
               <th className="px-4 py-3 font-normal text-right">Selisih (m²)</th>
               <th className="px-4 py-3 font-normal text-right">% Selisih</th>
-              <th className="px-4 py-3 font-normal">Progres</th>
+              <th className="px-4 py-3 font-normal">% Realisasi</th>
               <th className="px-4 py-3 font-normal">Status</th>
               <th className="px-4 py-3 font-normal text-right">Aksi</th>
             </tr>
@@ -181,8 +181,12 @@ export default function ReconstructionClusterTable({ rows, loading, canEdit, geo
                   <td className="px-4 py-3 text-slate-500">{r.kabupaten ?? "-"}</td>
                   <td className="px-4 py-3 text-right">{formatM2(r.luas_pembebasan_ha)}</td>
                   <td className="px-4 py-3 text-right">{formatM2(r.luas_rekonstruksi_ha)}</td>
-                  <td className="px-4 py-3 text-right">{formatM2(r.selisih_ha)}</td>
-                  <td className="px-4 py-3 text-right">{r.persen_selisih}%</td>
+                  <td className={`px-4 py-3 text-right ${Number(r.selisih_ha) < 0 ? "text-red-600" : "text-emerald-600"}`}>
+                    {formatM2(r.selisih_ha)}
+                  </td>
+                  <td className={`px-4 py-3 text-right ${r.persen_selisih < 0 ? "text-red-600" : "text-emerald-600"}`}>
+                    {r.persen_selisih}%
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">

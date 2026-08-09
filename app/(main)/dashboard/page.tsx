@@ -239,8 +239,12 @@ export default async function DashboardPage() {
                       <td className="px-5 py-3">{r.lokasi}</td>
                       <td className="px-5 py-3 text-right">{formatM2(r.luas_pembebasan_ha)}</td>
                       <td className="px-5 py-3 text-right">{formatM2(r.luas_rekonstruksi_ha)}</td>
-                      <td className="px-5 py-3 text-right">{formatM2(r.selisih_ha)}</td>
-                      <td className="px-5 py-3 text-right">{r.persen_selisih}%</td>
+                      <td className={`px-5 py-3 text-right ${Number(r.selisih_ha) < 0 ? "text-red-600" : "text-emerald-600"}`}>
+                        {formatM2(r.selisih_ha)}
+                      </td>
+                      <td className={`px-5 py-3 text-right ${r.persen_selisih < 0 ? "text-red-600" : "text-emerald-600"}`}>
+                        {r.persen_selisih}%
+                      </td>
                       <td className="px-5 py-3">
                         <span className={`rounded-full px-2 py-1 text-xs ${status?.className}`}>
                           {status?.label}

@@ -113,9 +113,6 @@ create table daily_reports (
   kesimpulan text,
   rencana_besok text,
   foto_urls text[],
-  target_persen numeric(5,2),
-  realisasi_persen numeric(5,2),
-  rincian_kegiatan jsonb,
   dibuat_oleh uuid references profiles(id),
   disetujui_oleh uuid references profiles(id),
   status_approval text check (status_approval in ('draft','submitted','approved')) default 'draft',
@@ -135,7 +132,6 @@ create table weekly_reports (
   kendala text,
   mitigasi text,
   foto_urls text[],
-  rincian_kegiatan jsonb,
   dibuat_oleh uuid references profiles(id),
   disetujui_oleh uuid references profiles(id),
   created_at timestamptz default now()
@@ -153,7 +149,6 @@ create table monthly_reports (
   analisis_kendala text,
   proyeksi_bulan_depan text,
   lampiran_urls text[],
-  rincian_kegiatan jsonb,
   dibuat_oleh uuid references profiles(id),
   disetujui_oleh uuid references profiles(id),
   created_at timestamptz default now()
@@ -186,15 +181,22 @@ select
   c.luas_pembebasan_ha,
   c.luas_deliniasi_ha,
   coalesce(rm.luas_rekonstruksi_ha, 0) as luas_rekonstruksi_ha,
-  c.luas_pembebasan_ha - coalesce(rm.luas_rekonstruksi_ha, 0) as selisih_ha,
+  -- Selisih = REALISASI - TARGET: negatif berarti masih kurang dari target,
+  -- nol/positif berarti sudah sesuai atau melebihi target.
+  coalesce(rm.luas_rekonstruksi_ha, 0) - c.luas_pembebasan_ha as selisih_ha,
   case when c.luas_pembebasan_ha > 0
-    then round(((c.luas_pembebasan_ha - coalesce(rm.luas_rekonstruksi_ha, 0)) / c.luas_pembebasan_ha) * 100, 2)
+    then round(((coalesce(rm.luas_rekonstruksi_ha, 0) - c.luas_pembebasan_ha) / c.luas_pembebasan_ha) * 100, 2)
     else 0 end as persen_selisih,
+  -- "Selesai" = sudah ada realisasi tercatat DAN selisihnya terhadap target
+  -- berada dalam toleransi ±10% (bukan harus tepat 100%, karena pekerjaan
+  -- rekonstruksinya memang sudah dilakukan di lokasi). "On progress" =
+  -- sudah ada realisasi tapi selisihnya masih di luar toleransi itu.
   case
     when coalesce(rm.luas_rekonstruksi_ha, 0) = 0 then 'not_started'
-    when coalesce(rm.luas_rekonstruksi_ha, 0) >= c.luas_pembebasan_ha * 0.95 then 'completed'
-    when coalesce(rm.luas_rekonstruksi_ha, 0) >= c.luas_pembebasan_ha * 0.70 then 'on_progress'
-    else 'need_follow_up'
+    when c.luas_pembebasan_ha > 0
+      and abs((coalesce(rm.luas_rekonstruksi_ha, 0) - c.luas_pembebasan_ha) / c.luas_pembebasan_ha) <= 0.10
+      then 'completed'
+    else 'on_progress'
   end as status,
   rm.tanggal_update
 from clusters c
