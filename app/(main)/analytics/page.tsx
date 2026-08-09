@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import Topbar from "@/components/Topbar";
 import { BurndownChart, ProductivityChart } from "@/components/AnalyticsCharts";
+import AnalyticsStatCards from "@/components/AnalyticsStatCards";
+import AnalyticsClusterSummary from "@/components/AnalyticsClusterSummary";
+import AnalyticsClusterTable from "@/components/AnalyticsClusterTable";
 import { supabase } from "@/lib/supabase";
 import { Project, Cluster } from "@/lib/types";
 import {
@@ -16,16 +19,6 @@ import {
 } from "@/lib/analytics";
 import { format } from "date-fns";
 import { formatM2, haToM2 } from "@/lib/units";
-
-function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5">
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-medium text-slate-900">{value}</p>
-      {sub && <p className="mt-1 text-xs text-slate-400">{sub}</p>}
-    </div>
-  );
-}
 
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
@@ -82,65 +75,61 @@ export default function AnalyticsPage() {
         {loading && <p className="text-sm text-slate-400">Memuat data...</p>}
 
         {!loading && points.length === 0 && (
-          <div className="rounded-lg border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-400">
-            Belum ada histori "Catat update" di Reconstruction Report — analytics butuh minimal 2 titik data
-            per cluster untuk menghitung tren dan proyeksi.
-          </div>
+          <p className="flex items-start gap-2 rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-700">
+            Belum ada histori "Catat update" di Reconstruction Report — analytics butuh minimal 2 titik data per
+            cluster untuk menghitung tren dan proyeksi.
+          </p>
         )}
 
         {!loading && points.length > 0 && (
           <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <MetricCard
-                label="Kecepatan progres"
-                value={velocity ? `${haToM2(velocity.haPerWeek).toLocaleString("id-ID")} m²/minggu` : "-"}
-                sub={
-                  velocity
-                    ? velocity.basis === "30_hari_terakhir"
-                      ? "Rata-rata 30 hari terakhir"
-                      : "Rata-rata seluruh histori (data <30 hari)"
-                    : "Butuh minimal 2 titik data"
-                }
-              />
-              <MetricCard
-                label="Sisa realisasi"
-                value={`${formatM2(remainingNow)} m²`}
-                sub={`dari total target ${formatM2(totalTarget)} m²`}
-              />
-              <MetricCard
-                label="Estimasi selesai"
-                value={forecast ? format(new Date(forecast.forecastDate), "d MMM yyyy") : "-"}
-                sub={
-                  forecast
-                    ? `~${forecast.daysRemaining} hari lagi (proyeksi linear dari tren saat ini)`
-                    : velocity && velocity.haPerDay <= 0
-                    ? "Tren progres stagnan/menurun"
-                    : "Belum bisa diproyeksikan"
-                }
-              />
-              <MetricCard
-                label="Terhadap jadwal rencana"
-                value={
-                  scheduleGapDays === null
-                    ? "-"
-                    : scheduleGapDays <= 0
-                    ? `Lebih cepat ${Math.abs(scheduleGapDays)} hari`
-                    : `Berpotensi mundur ${scheduleGapDays} hari`
-                }
-                sub={project?.end_date ? `Target jadwal: ${format(new Date(project.end_date), "d MMM yyyy")}` : "Isi tanggal selesai proyek untuk aktifkan"}
-              />
+            <AnalyticsStatCards
+              velocityLabel={velocity ? `${haToM2(velocity.haPerWeek).toLocaleString("id-ID")} m²/minggu` : "-"}
+              velocitySub={
+                velocity
+                  ? velocity.basis === "30_hari_terakhir"
+                    ? "Rata-rata 30 hari terakhir"
+                    : "Rata-rata seluruh histori (data <30 hari)"
+                  : "Butuh minimal 2 titik data"
+              }
+              sisaValue={`${formatM2(remainingNow)} m²`}
+              sisaSub={`dari total target ${formatM2(totalTarget)} m²`}
+              estimasiValue={forecast ? format(new Date(forecast.forecastDate), "d MMM yyyy") : "-"}
+              estimasiSub={
+                forecast
+                  ? `~${forecast.daysRemaining} hari lagi (proyeksi linear dari tren saat ini)`
+                  : velocity && velocity.haPerDay <= 0
+                  ? "Tren progres stagnan/menurun"
+                  : "Belum bisa diproyeksikan"
+              }
+              jadwalValue={
+                scheduleGapDays === null
+                  ? "-"
+                  : scheduleGapDays <= 0
+                  ? `Lebih cepat ${Math.abs(scheduleGapDays)} hari`
+                  : `Berpotensi mundur ${scheduleGapDays} hari`
+              }
+              jadwalSub={
+                project?.end_date
+                  ? `Target jadwal: ${format(new Date(project.end_date), "d MMM yyyy")}`
+                  : "Isi tanggal selesai proyek untuk aktifkan"
+              }
+              jadwalTone={scheduleGapDays === null ? "slate" : scheduleGapDays <= 0 ? "emerald" : "amber"}
+            />
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 className="mb-1 text-sm font-medium text-slate-900">Burn-down — sisa realisasi vs jadwal ideal</h2>
+                <p className="mb-3 text-xs text-slate-400">
+                  Garis merah = sisa area yang belum direkonstruksi berdasarkan data aktual. Garis putus-putus
+                  abu-abu = jadwal ideal linear dari tanggal mulai sampai tanggal selesai proyek.
+                </p>
+                <BurndownChart series={series} />
+              </div>
+              <AnalyticsClusterSummary clusters={clusterStats} />
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-5">
-              <h2 className="mb-1 text-sm font-medium text-slate-900">Burn-down — sisa realisasi vs jadwal ideal</h2>
-              <p className="mb-3 text-xs text-slate-400">
-                Garis merah = sisa area yang belum direkonstruksi berdasarkan data aktual. Garis putus-putus
-                abu-abu = jadwal ideal linear dari tanggal mulai sampai tanggal selesai proyek.
-              </p>
-              <BurndownChart series={series} />
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="mb-1 text-sm font-medium text-slate-900">Produktivitas mingguan</h2>
               <p className="mb-3 text-xs text-slate-400">
                 Total penambahan luas rekonstruksi (semua cluster digabung) per minggu.
@@ -148,55 +137,7 @@ export default function AnalyticsPage() {
               <ProductivityChart data={weekly} />
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-              <div className="border-b border-slate-200 px-5 py-4">
-                <h2 className="text-sm font-medium text-slate-900">Produktivitas per cluster</h2>
-                <p className="mt-1 text-xs text-slate-400">
-                  Cluster ditandai "Perlu perhatian" kalau progresnya stagnan atau proyeksi penyelesaiannya
-                  lebih dari 180 hari lagi.
-                </p>
-              </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-left text-slate-500">
-                    <th className="px-5 py-3 font-normal">Cluster</th>
-                    <th className="px-5 py-3 text-right font-normal">Progres</th>
-                    <th className="px-5 py-3 text-right font-normal">Kecepatan (m²/minggu)</th>
-                    <th className="px-5 py-3 text-right font-normal">Sisa (m²)</th>
-                    <th className="px-5 py-3 font-normal">Estimasi selesai</th>
-                    <th className="px-5 py-3 font-normal">Catatan</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {clusterStats.map((c) => (
-                    <tr key={c.cluster_id} className="border-b border-slate-50">
-                      <td className="px-5 py-3 font-medium">{c.name}</td>
-                      <td className="px-5 py-3 text-right">{c.persenSelesai}%</td>
-                      <td className="px-5 py-3 text-right">{formatM2(c.haPerWeek)}</td>
-                      <td className="px-5 py-3 text-right">{formatM2(c.remainingHa)}</td>
-                      <td className="px-5 py-3">
-                        {c.forecastDate ? format(new Date(c.forecastDate), "d MMM yyyy") : "-"}
-                      </td>
-                      <td className="px-5 py-3">
-                        {c.remainingHa === 0 ? (
-                          <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-700">
-                            Selesai
-                          </span>
-                        ) : c.atRisk ? (
-                          <span className="rounded-full bg-red-100 px-2 py-1 text-xs text-red-700">
-                            Perlu perhatian
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-700">
-                            On progress
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <AnalyticsClusterTable clusters={clusterStats} />
 
             <p className="text-xs text-slate-400">
               Catatan: proyeksi tanggal selesai dihitung dari tren linear kecepatan realisasi terkini —
