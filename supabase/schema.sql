@@ -184,17 +184,22 @@ select
   -- Selisih = REALISASI - TARGET: negatif berarti masih kurang dari target,
   -- nol/positif berarti sudah sesuai atau melebihi target.
   coalesce(rm.luas_rekonstruksi_ha, 0) - c.luas_pembebasan_ha as selisih_ha,
-  case when c.luas_pembebasan_ha > 0
-    then round(((coalesce(rm.luas_rekonstruksi_ha, 0) - c.luas_pembebasan_ha) / c.luas_pembebasan_ha) * 100, 2)
-    else 0 end as persen_selisih,
-  -- "Selesai" = sudah ada realisasi tercatat DAN selisihnya terhadap target
-  -- berada dalam toleransi ±10% (bukan harus tepat 100%, karena pekerjaan
-  -- rekonstruksinya memang sudah dilakukan di lokasi). "On progress" =
-  -- sudah ada realisasi tapi selisihnya masih di luar toleransi itu.
+  case
+    when c.luas_pembebasan_ha > 0
+      then round(((coalesce(rm.luas_rekonstruksi_ha, 0) - c.luas_pembebasan_ha) / c.luas_pembebasan_ha) * 100, 2)
+    -- Target kosong/nol tapi realisasi sudah ada -- anggap sudah pas (0%),
+    -- bukan dibagi nol.
+    else 0
+  end as persen_selisih,
+  -- "Selesai" = target kosong/nol dengan realisasi sudah diisi, ATAU sudah
+  -- ada realisasi tercatat dan selisihnya terhadap target dalam toleransi
+  -- ±10% (bukan harus tepat 100%, karena pekerjaan rekonstruksinya memang
+  -- sudah dilakukan di lokasi). "On progress" = sudah ada realisasi tapi
+  -- selisihnya masih di luar toleransi itu.
   case
     when coalesce(rm.luas_rekonstruksi_ha, 0) = 0 then 'not_started'
-    when c.luas_pembebasan_ha > 0
-      and abs((coalesce(rm.luas_rekonstruksi_ha, 0) - c.luas_pembebasan_ha) / c.luas_pembebasan_ha) <= 0.10
+    when c.luas_pembebasan_ha <= 0 then 'completed'
+    when abs((coalesce(rm.luas_rekonstruksi_ha, 0) - c.luas_pembebasan_ha) / c.luas_pembebasan_ha) <= 0.10
       then 'completed'
     else 'on_progress'
   end as status,

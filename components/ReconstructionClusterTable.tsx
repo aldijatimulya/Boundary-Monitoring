@@ -172,6 +172,8 @@ export default function ReconstructionClusterTable({ rows, loading, canEdit, geo
               const progres =
                 Number(r.luas_pembebasan_ha) > 0
                   ? Math.min(100, Math.round((Number(r.luas_rekonstruksi_ha) / Number(r.luas_pembebasan_ha)) * 100))
+                  : Number(r.luas_rekonstruksi_ha) > 0
+                  ? 100
                   : 0;
               return (
                 <tr key={r.cluster_id} className="border-b border-slate-50">
