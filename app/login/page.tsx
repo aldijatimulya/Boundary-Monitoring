@@ -145,7 +145,11 @@ export default function LoginPage() {
             </p>
           </div>
           <div className="hidden xl:block">
-            <LoginIllustration />
+            <img
+              src="/brand/login-illustration.png"
+              alt="Petugas lapangan mengukur titik batas dengan GNSS RTK"
+              className="w-full"
+            />
           </div>
         </div>
 
@@ -425,53 +429,6 @@ function GoogleIcon({ className }: { className?: string }) {
         fill="#1976D2"
         d="M43.6 20.5H42V20.4H24v7.2h11.3c-.8 2.2-2.2 4.1-4.1 5.4l6.2 5.2C40.6 35.8 44 30.4 44 24c0-1.3-.1-2.7-.4-3.5z"
       />
-    </svg>
-  );
-}
-
-/** Ilustrasi vektor sederhana: petugas lapangan dengan alat GNSS RTK, gunung
- *  di latar belakang, dan patok pipa merah-kuning -- SVG asli, bukan foto. */
-function LoginIllustration() {
-  return (
-    <svg viewBox="0 0 360 320" className="w-full" xmlns="http://www.w3.org/2000/svg">
-      <ellipse cx="180" cy="290" rx="150" ry="18" fill="#EEF2FF" />
-      <path d="M0 220 L60 140 L120 200 L190 100 L260 190 L360 210 L360 320 L0 320 Z" fill="#DBEAFE" opacity="0.6" />
-      <path d="M40 230 L100 160 L150 210 L210 130 L270 220 Z" fill="#BFDBFE" opacity="0.7" />
-
-      <circle cx="70" cy="60" r="18" fill="#F1F5F9" />
-      <circle cx="100" cy="45" r="24" fill="#F8FAFC" />
-      <circle cx="130" cy="65" r="16" fill="#F1F5F9" />
-
-      <path d="M280 60 q10 -8 20 0" stroke="#93C5FD" strokeWidth="3" fill="none" strokeLinecap="round" />
-      <path d="M295 50 q10 -8 20 0" stroke="#93C5FD" strokeWidth="3" fill="none" strokeLinecap="round" />
-
-      <g transform="translate(255,120)">
-        <rect x="-4" y="0" width="8" height="150" rx="3" fill="#CBD5E1" />
-        <rect x="-16" y="150" width="32" height="10" rx="3" fill="#94A3B8" />
-        <circle cx="0" cy="-14" r="16" fill="#2563EB" />
-        <circle cx="0" cy="-14" r="7" fill="#BFDBFE" />
-        <path d="M-24 -14 a24 24 0 0 1 48 0" stroke="#60A5FA" strokeWidth="3" fill="none" opacity="0.6" />
-      </g>
-
-      <g transform="translate(305,150)">
-        <rect x="-7" y="0" width="14" height="90" fill="#DC2626" />
-        <rect x="-7" y="18" width="14" height="18" fill="#FACC15" />
-        <rect x="-7" y="54" width="14" height="18" fill="#FACC15" />
-        <rect x="-11" y="88" width="22" height="8" rx="2" fill="#78716C" />
-      </g>
-
-      <g transform="translate(150,120)">
-        <circle cx="20" cy="18" r="16" fill="#F2C9A0" />
-        <path d="M4 16 a16 16 0 0 1 32 0 v-4 a16 16 0 0 0 -32 0 z" fill="#F8FAFC" />
-        <rect x="0" y="30" width="40" height="60" rx="10" fill="#1D4ED8" />
-        <rect x="-6" y="34" width="14" height="46" rx="6" fill="#1E40AF" />
-        <rect x="32" y="34" width="14" height="46" rx="6" fill="#1E40AF" />
-        <rect x="6" y="86" width="12" height="40" rx="5" fill="#334155" />
-        <rect x="22" y="86" width="12" height="40" rx="5" fill="#334155" />
-        <rect x="2" y="122" width="20" height="8" rx="3" fill="#0F172A" />
-        <rect x="18" y="122" width="20" height="8" rx="3" fill="#0F172A" />
-        <rect x="30" y="46" width="18" height="26" rx="3" fill="#0EA5A0" transform="rotate(18 39 59)" />
-      </g>
     </svg>
   );
 }
