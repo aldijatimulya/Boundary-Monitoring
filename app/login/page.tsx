@@ -120,7 +120,15 @@ export default function LoginPage() {
       {/* Panel kiri: branding, ilustrasi & sekilas alur kerja -- disembunyikan
           di layar sempit supaya form login tetap jadi fokus utama di HP */}
       <div className="relative hidden w-full flex-col overflow-hidden bg-white px-10 py-10 lg:flex lg:w-[58%] xl:px-16">
-        <div className="relative flex items-center gap-3">
+        {/* Aksen gradasi biru dekoratif di belakang seluruh konten -- biar
+            panel kiri tidak polos, tanpa mengganggu keterbacaan teks di atasnya */}
+        <div className="pointer-events-none absolute inset-0 z-0">
+          <div className="absolute -left-24 -top-32 h-80 w-80 rounded-full bg-gradient-to-br from-blue-100 to-blue-50 opacity-70 blur-3xl" />
+          <div className="absolute right-0 top-24 h-96 w-96 rounded-full bg-gradient-to-bl from-blue-200 to-teal-100 opacity-50 blur-3xl" />
+          <div className="absolute -bottom-24 left-1/4 h-72 w-72 rounded-full bg-gradient-to-tr from-teal-100 to-blue-50 opacity-60 blur-3xl" />
+        </div>
+
+        <div className="relative z-10 flex items-center gap-3">
           <img src="/brand/medcoenergi-logo.png" alt="MedcoEnergi" className="h-10 w-10 object-contain" />
           <div>
             <p className="text-sm font-bold tracking-wide text-slate-900">MEDCOENERGI</p>
@@ -128,8 +136,8 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="relative mt-8 grid grid-cols-1 items-start gap-6 xl:grid-cols-[1fr_360px]">
-          <div>
+        <div className="relative z-10 mt-6 grid grid-cols-1 items-center gap-2 xl:grid-cols-[1fr_420px]">
+          <div className="relative z-10">
             <h1 className="text-4xl font-bold leading-tight text-slate-900 xl:text-5xl">
               Boundary
               <br />
@@ -144,16 +152,19 @@ export default function LoginPage() {
               RTK, dan pemasangan tanda batas patok pipa secara akurat, terdokumentasi, dan terpantau.
             </p>
           </div>
-          <div className="hidden xl:block">
+          {/* -mb menarik baris fitur di bawahnya supaya sedikit tumpang tindih
+              dengan tepi ilustrasi yang sudah memudar -- kesan menyatu, bukan
+              foto yang ditempel kotak */}
+          <div className="relative z-0 -mb-10 hidden xl:-mr-6 xl:block">
             <img
               src="/brand/login-illustration.png"
               alt="Petugas lapangan mengukur titik batas dengan GNSS RTK"
-              className="w-full"
+              className="w-full scale-110"
             />
           </div>
         </div>
 
-        <div className="relative mt-8 grid grid-cols-3 gap-4">
+        <div className="relative z-10 mt-2 grid grid-cols-3 gap-4">
           {FEATURES.map((f, i) => (
             <div
               key={f.title}
@@ -179,7 +190,7 @@ export default function LoginPage() {
           ))}
         </div>
 
-        <div className="relative mt-5 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+        <div className="relative z-10 mt-5 flex items-center justify-between rounded-xl bg-slate-50/90 px-4 py-3 backdrop-blur-sm">
           {PROCESS_STEPS.map((step, i) => (
             <div key={step.label} className="flex items-center">
               <div className="flex flex-col items-center text-center">
@@ -195,7 +206,7 @@ export default function LoginPage() {
           ))}
         </div>
 
-        <div className="relative mt-5 grid grid-cols-3 gap-4 text-xs text-slate-500">
+        <div className="relative z-10 mt-5 grid grid-cols-3 gap-4 text-xs text-slate-500">
           {TRUST_BADGES.map((b) => (
             <div key={b.title} className="flex items-start gap-2">
               <b.icon className="mt-0.5 h-4 w-4 shrink-0 text-brand-blue" />
@@ -207,7 +218,7 @@ export default function LoginPage() {
           ))}
         </div>
 
-        <p className="relative mt-6 text-[11px] text-slate-400">
+        <p className="relative z-10 mt-6 text-[11px] text-slate-400">
           © {new Date().getFullYear()} PT Medco E&P South Sumatra Region. All rights reserved.
         </p>
       </div>
