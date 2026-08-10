@@ -1,8 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// Halaman yang tidak butuh login sama sekali.
-const PUBLIC_PATHS = ["/login"];
+// Halaman/route yang tidak butuh login sama sekali. "/auth/callback" WAJIB
+// ada di sini -- itu route yang baru saja dituju Google setelah user login,
+// dan sesi (cookie) baru terbentuk SETELAH route itu selesai jalan. Kalau
+// tidak dikecualikan, middleware ini akan keburu redirect ke /login duluan
+// sebelum sempat menukar code jadi sesi.
+const PUBLIC_PATHS = ["/login", "/auth/callback"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });

@@ -1,38 +1,47 @@
-import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { NextResponse, type NextRequest } from "next/server";
 
-// Dipanggil oleh Supabase setelah: (a) login Google berhasil, atau (b) link
-// reset kata sandi di email diklik. Tugasnya cuma satu: tukar `code` di URL
-// jadi sesi login (cookie) lewat exchangeCodeForSession, lalu redirect ke
-// tujuan berikutnya (?next=...) -- default ke /dashboard.
-export async function GET(request: Request) {
+// Setelah user login lewat Google (atau provider OAuth lain), Supabase
+// redirect balik ke sini dengan query `?code=...`. Tugas route ini cuma satu:
+// tukar code itu jadi session (cookie) lewat exchangeCodeForSession, lalu
+// redirect ke halaman tujuan. Tanpa route ini, redirect dari Google akan
+// 404 dan sesi TIDAK PERNAH terbentuk -- ini penyebab utama "Masuk dengan
+// Google" gagal.
+export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  // `next` opsional -- kalau nanti ada kebutuhan redirect ke halaman spesifik
+  // setelah login (bukan selalu /dashboard), tinggal kirim ?next=/xxx.
   const next = searchParams.get("next") ?? "/dashboard";
 
   if (code) {
-    const cookieStore = cookies();
+    let response = NextResponse.redirect(`${origin}${next}`);
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
           getAll() {
-            return cookieStore.getAll();
+            return request.cookies.getAll();
           },
           setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+            cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
           },
         },
       }
     );
+
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      return response;
     }
+    // Kalau gagal tukar code (mis. code kedaluwarsa/dipakai ulang), lempar ke
+    // login dengan pesan error supaya user tahu, bukan diam-diam redirect ke
+    // dashboard tanpa sesi.
+    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`);
   }
 
-  // Code tidak ada / gagal ditukar (link kedaluwarsa, dipakai dua kali, dst).
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`);
+  // Tidak ada `code` sama sekali di URL -- kemungkinan diakses langsung/salah.
+  return NextResponse.redirect(`${origin}/login?error=missing_code`);
 }
