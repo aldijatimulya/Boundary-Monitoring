@@ -113,6 +113,9 @@ create table daily_reports (
   kesimpulan text,
   rencana_besok text,
   foto_urls text[],
+  target_persen numeric(5,2),
+  realisasi_persen numeric(5,2),
+  rincian_kegiatan jsonb,
   dibuat_oleh uuid references profiles(id),
   disetujui_oleh uuid references profiles(id),
   status_approval text check (status_approval in ('draft','submitted','approved')) default 'draft',
@@ -132,6 +135,7 @@ create table weekly_reports (
   kendala text,
   mitigasi text,
   foto_urls text[],
+  rincian_kegiatan jsonb,
   dibuat_oleh uuid references profiles(id),
   disetujui_oleh uuid references profiles(id),
   created_at timestamptz default now()
@@ -149,6 +153,7 @@ create table monthly_reports (
   analisis_kendala text,
   proyeksi_bulan_depan text,
   lampiran_urls text[],
+  rincian_kegiatan jsonb,
   dibuat_oleh uuid references profiles(id),
   disetujui_oleh uuid references profiles(id),
   created_at timestamptz default now()
@@ -181,27 +186,15 @@ select
   c.luas_pembebasan_ha,
   c.luas_deliniasi_ha,
   coalesce(rm.luas_rekonstruksi_ha, 0) as luas_rekonstruksi_ha,
-  -- Selisih = REALISASI - TARGET: negatif berarti masih kurang dari target,
-  -- nol/positif berarti sudah sesuai atau melebihi target.
-  coalesce(rm.luas_rekonstruksi_ha, 0) - c.luas_pembebasan_ha as selisih_ha,
-  case
-    when c.luas_pembebasan_ha > 0
-      then round(((coalesce(rm.luas_rekonstruksi_ha, 0) - c.luas_pembebasan_ha) / c.luas_pembebasan_ha) * 100, 2)
-    -- Target kosong/nol tapi realisasi sudah ada -- anggap sudah pas (0%),
-    -- bukan dibagi nol.
-    else 0
-  end as persen_selisih,
-  -- "Selesai" = target kosong/nol dengan realisasi sudah diisi, ATAU sudah
-  -- ada realisasi tercatat dan selisihnya terhadap target dalam toleransi
-  -- ±10% (bukan harus tepat 100%, karena pekerjaan rekonstruksinya memang
-  -- sudah dilakukan di lokasi). "On progress" = sudah ada realisasi tapi
-  -- selisihnya masih di luar toleransi itu.
+  c.luas_pembebasan_ha - coalesce(rm.luas_rekonstruksi_ha, 0) as selisih_ha,
+  case when c.luas_pembebasan_ha > 0
+    then round(((c.luas_pembebasan_ha - coalesce(rm.luas_rekonstruksi_ha, 0)) / c.luas_pembebasan_ha) * 100, 2)
+    else 0 end as persen_selisih,
   case
     when coalesce(rm.luas_rekonstruksi_ha, 0) = 0 then 'not_started'
-    when c.luas_pembebasan_ha <= 0 then 'completed'
-    when abs((coalesce(rm.luas_rekonstruksi_ha, 0) - c.luas_pembebasan_ha) / c.luas_pembebasan_ha) <= 0.10
-      then 'completed'
-    else 'on_progress'
+    when coalesce(rm.luas_rekonstruksi_ha, 0) >= c.luas_pembebasan_ha * 0.95 then 'completed'
+    when coalesce(rm.luas_rekonstruksi_ha, 0) >= c.luas_pembebasan_ha * 0.70 then 'on_progress'
+    else 'need_follow_up'
   end as status,
   rm.tanggal_update
 from clusters c
@@ -314,6 +307,37 @@ alter table documents enable row level security;
 -- Semua user yang sudah login boleh membaca (dashboard bersifat internal tim + Medco viewer)
 -- Helper: role profil user yang sedang login (dari tabel profiles, bukan
 -- auth.role() bawaan Supabase yang cuma tahu "authenticated"/"anon").
+-- Auto-buat baris profiles (role default 'viewer_medco') begitu ada user baru
+-- di auth.users -- mencakup login Google (self-registration) maupun user
+-- yang di-invite admin lewat email/password. Lihat migration_sprint14 untuk
+-- catatan lengkap & cara promosikan user ke admin/surveyor/pic_lapangan.
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, full_name, role)
+  values (
+    new.id,
+    coalesce(
+      new.raw_user_meta_data->>'full_name',
+      new.raw_user_meta_data->>'name',
+      split_part(new.email, '@', 1)
+    ),
+    'viewer_medco'
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
 create or replace function current_profile_role()
 returns text
 language sql
