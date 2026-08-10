@@ -4,37 +4,40 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import PhotoUpload from "@/components/PhotoUpload";
 import RincianKegiatanInput from "@/components/report/RincianKegiatanInput";
-import type { RincianKegiatanItem } from "@/lib/types";
+import type { DailyReport, RincianKegiatanItem } from "@/lib/types";
 
 type Props = {
   projectId: string;
+  /** Kalau diisi, form jadi mode EDIT (update baris ini) -- kalau null/undefined, mode tambah baru (insert). */
+  report?: DailyReport | null;
   onClose: () => void;
   onSaved: () => void;
 };
 
-export default function DailyReportForm({ projectId, onClose, onSaved }: Props) {
+export default function DailyReportForm({ projectId, report, onClose, onSaved }: Props) {
+  const isEdit = !!report;
   const [form, setForm] = useState({
-    tanggal: new Date().toISOString().slice(0, 10),
-    tim: "",
-    personil: "",
-    jam_kerja_mulai: "07:00",
-    jam_kerja_selesai: "16:00",
-    cuaca: "Cerah",
-    koordinat_lat: "",
-    koordinat_lng: "",
-    kegiatan: "",
-    target: "",
-    realisasi: "",
-    target_persen: "",
-    realisasi_persen: "",
-    material_digunakan: "",
-    permasalahan: "",
-    mitigasi: "",
-    kesimpulan: "",
-    rencana_besok: "",
+    tanggal: report?.tanggal ?? new Date().toISOString().slice(0, 10),
+    tim: report?.tim ?? "",
+    personil: report?.personil != null ? String(report.personil) : "",
+    jam_kerja_mulai: report?.jam_kerja_mulai ?? "07:00",
+    jam_kerja_selesai: report?.jam_kerja_selesai ?? "16:00",
+    cuaca: report?.cuaca ?? "Cerah",
+    koordinat_lat: report?.koordinat_lat != null ? String(report.koordinat_lat) : "",
+    koordinat_lng: report?.koordinat_lng != null ? String(report.koordinat_lng) : "",
+    kegiatan: report?.kegiatan ?? "",
+    target: report?.target ?? "",
+    realisasi: report?.realisasi ?? "",
+    target_persen: report?.target_persen != null ? String(report.target_persen) : "",
+    realisasi_persen: report?.realisasi_persen != null ? String(report.realisasi_persen) : "",
+    material_digunakan: report?.material_digunakan ?? "",
+    permasalahan: report?.permasalahan ?? "",
+    mitigasi: report?.mitigasi ?? "",
+    kesimpulan: report?.kesimpulan ?? "",
+    rencana_besok: report?.rencana_besok ?? "",
   });
-  const [rincianKegiatan, setRincianKegiatan] = useState<RincianKegiatanItem[]>([]);
-  const [fotoUrls, setFotoUrls] = useState<string[]>([]);
+  const [rincianKegiatan, setRincianKegiatan] = useState<RincianKegiatanItem[]>(report?.rincian_kegiatan ?? []);
+  const [fotoUrls, setFotoUrls] = useState<string[]>(report?.foto_urls ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -46,8 +49,8 @@ export default function DailyReportForm({ projectId, onClose, onSaved }: Props) 
       return;
     }
     setSaving(true);
-    const { error: dbError } = await supabase.from("daily_reports").insert({
-      project_id: projectId,
+
+    const payload = {
       tanggal: form.tanggal,
       tim: form.tim || null,
       personil: form.personil ? Number(form.personil) : null,
@@ -68,8 +71,16 @@ export default function DailyReportForm({ projectId, onClose, onSaved }: Props) 
       kesimpulan: form.kesimpulan || null,
       rencana_besok: form.rencana_besok || null,
       foto_urls: fotoUrls,
-      status_approval: "submitted",
-    });
+    };
+
+    // Mode edit: UPDATE baris yang sudah ada, status_approval sengaja TIDAK
+    // ikut diubah (biar laporan yang sudah "approved" tidak otomatis balik
+    // status cuma karena admin membetulkan isinya).
+    // Mode tambah: INSERT baris baru dengan status_approval awal "submitted".
+    const { error: dbError } = isEdit
+      ? await supabase.from("daily_reports").update(payload).eq("id", report!.id)
+      : await supabase.from("daily_reports").insert({ project_id: projectId, ...payload, status_approval: "submitted" });
+
     setSaving(false);
     if (dbError) {
       setError(dbError.message);
@@ -84,7 +95,7 @@ export default function DailyReportForm({ projectId, onClose, onSaved }: Props) 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4">
       <form onSubmit={handleSubmit} className="my-8 w-full max-w-2xl rounded-xl bg-white p-6">
-        <h2 className="text-base font-medium text-slate-900">Laporan Harian</h2>
+        <h2 className="text-base font-medium text-slate-900">{isEdit ? "Edit Laporan Harian" : "Laporan Harian"}</h2>
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div>
             <label className="text-sm text-slate-600">Tanggal</label>
@@ -184,7 +195,7 @@ export default function DailyReportForm({ projectId, onClose, onSaved }: Props) 
         <div className="mt-6 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="rounded-md border border-slate-200 px-4 py-2 text-sm">Batal</button>
           <button type="submit" disabled={saving} className="rounded-md bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-            {saving ? "Menyimpan..." : "Simpan laporan"}
+            {saving ? "Menyimpan..." : isEdit ? "Simpan perubahan" : "Simpan laporan"}
           </button>
         </div>
       </form>

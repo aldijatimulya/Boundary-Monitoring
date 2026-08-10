@@ -4,10 +4,12 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import PhotoUpload from "@/components/PhotoUpload";
 import RincianKegiatanInput from "@/components/report/RincianKegiatanInput";
-import type { RincianKegiatanItem } from "@/lib/types";
+import type { MonthlyReport, RincianKegiatanItem } from "@/lib/types";
 
 type Props = {
   projectId: string;
+  /** Kalau diisi, form jadi mode EDIT (update baris ini) -- kalau null/undefined, mode tambah baru (insert). */
+  report?: MonthlyReport | null;
   onClose: () => void;
   onSaved: () => void;
 };
@@ -17,19 +19,20 @@ const BULAN_NAMA = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
-export default function MonthlyReportForm({ projectId, onClose, onSaved }: Props) {
+export default function MonthlyReportForm({ projectId, report, onClose, onSaved }: Props) {
+  const isEdit = !!report;
   const now = new Date();
   const [form, setForm] = useState({
-    bulan: String(now.getMonth() + 1),
-    tahun: String(now.getFullYear()),
-    ringkasan_eksekutif: "",
-    progres_rencana_persen: "",
-    progres_realisasi_persen: "",
-    analisis_kendala: "",
-    proyeksi_bulan_depan: "",
+    bulan: report ? String(report.bulan) : String(now.getMonth() + 1),
+    tahun: report ? String(report.tahun) : String(now.getFullYear()),
+    ringkasan_eksekutif: report?.ringkasan_eksekutif ?? "",
+    progres_rencana_persen: report?.progres_rencana_persen != null ? String(report.progres_rencana_persen) : "",
+    progres_realisasi_persen: report?.progres_realisasi_persen != null ? String(report.progres_realisasi_persen) : "",
+    analisis_kendala: report?.analisis_kendala ?? "",
+    proyeksi_bulan_depan: report?.proyeksi_bulan_depan ?? "",
   });
-  const [rincianKegiatan, setRincianKegiatan] = useState<RincianKegiatanItem[]>([]);
-  const [lampiranUrls, setLampiranUrls] = useState<string[]>([]);
+  const [rincianKegiatan, setRincianKegiatan] = useState<RincianKegiatanItem[]>(report?.rincian_kegiatan ?? []);
+  const [lampiranUrls, setLampiranUrls] = useState<string[]>(report?.lampiran_urls ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -40,8 +43,8 @@ export default function MonthlyReportForm({ projectId, onClose, onSaved }: Props
     e.preventDefault();
     setError("");
     setSaving(true);
-    const { error: dbError } = await supabase.from("monthly_reports").insert({
-      project_id: projectId,
+
+    const payload = {
       bulan: Number(form.bulan),
       tahun: Number(form.tahun),
       ringkasan_eksekutif: form.ringkasan_eksekutif || null,
@@ -51,7 +54,12 @@ export default function MonthlyReportForm({ projectId, onClose, onSaved }: Props
       proyeksi_bulan_depan: form.proyeksi_bulan_depan || null,
       rincian_kegiatan: rincianKegiatan,
       lampiran_urls: lampiranUrls,
-    });
+    };
+
+    const { error: dbError } = isEdit
+      ? await supabase.from("monthly_reports").update(payload).eq("id", report!.id)
+      : await supabase.from("monthly_reports").insert({ project_id: projectId, ...payload });
+
     setSaving(false);
     if (dbError) {
       setError(dbError.message);
@@ -63,7 +71,7 @@ export default function MonthlyReportForm({ projectId, onClose, onSaved }: Props
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4">
       <form onSubmit={handleSubmit} className="my-8 w-full max-w-xl rounded-xl bg-white p-6">
-        <h2 className="text-base font-medium text-slate-900">Laporan Bulanan</h2>
+        <h2 className="text-base font-medium text-slate-900">{isEdit ? "Edit Laporan Bulanan" : "Laporan Bulanan"}</h2>
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div>
             <label className="text-sm text-slate-600">Bulan</label>
@@ -113,7 +121,7 @@ export default function MonthlyReportForm({ projectId, onClose, onSaved }: Props
         <div className="mt-6 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="rounded-md border border-slate-200 px-4 py-2 text-sm">Batal</button>
           <button type="submit" disabled={saving} className="rounded-md bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-            {saving ? "Menyimpan..." : "Simpan laporan"}
+            {saving ? "Menyimpan..." : isEdit ? "Simpan perubahan" : "Simpan laporan"}
           </button>
         </div>
       </form>

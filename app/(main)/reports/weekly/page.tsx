@@ -58,6 +58,7 @@ export default function WeeklyReportPage() {
   const [reports, setReports] = useState<WeeklyReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<WeeklyReport | null>(null);
   const { canEdit } = useProfile();
 
   async function loadData() {
@@ -94,7 +95,10 @@ export default function WeeklyReportPage() {
         <div className="flex flex-wrap justify-end gap-2">
           {canEdit && (
             <button
-              onClick={() => setFormOpen(true)}
+              onClick={() => {
+                setEditing(null);
+                setFormOpen(true);
+              }}
               className="rounded-md bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
               Tambah laporan mingguan
@@ -148,7 +152,7 @@ export default function WeeklyReportPage() {
                 <th className="px-4 py-3 font-normal">Periode</th>
                 <th className="px-4 py-3 font-normal text-right">Rencana</th>
                 <th className="px-4 py-3 font-normal text-right">Realisasi</th>
-                <th className="px-4 py-3 font-normal text-right">Export</th>
+                <th className="px-4 py-3 font-normal text-right">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -164,7 +168,18 @@ export default function WeeklyReportPage() {
                   <td className="px-4 py-2">{r.periode_mulai} — {r.periode_selesai}</td>
                   <td className="px-4 py-2 text-right">{r.progres_rencana_persen ?? 0}%</td>
                   <td className="px-4 py-2 text-right">{r.progres_realisasi_persen ?? 0}%</td>
-                  <td className="px-4 py-2 text-right space-x-2">
+                  <td className="px-4 py-2 text-right space-x-2 whitespace-nowrap">
+                    {canEdit && (
+                      <button
+                        onClick={() => {
+                          setEditing(r);
+                          setFormOpen(true);
+                        }}
+                        className="text-xs text-brand-blue hover:underline"
+                      >
+                        Edit
+                      </button>
+                    )}
                     <button onClick={() => exportWeeklyReportPDF(r)} className="text-xs text-brand-blue hover:underline">PDF</button>
                     <button onClick={() => exportWeeklyReportDocx(r)} className="text-xs text-brand-blue hover:underline">Word</button>
                   </td>
@@ -178,9 +193,14 @@ export default function WeeklyReportPage() {
       {formOpen && project && (
         <WeeklyReportForm
           projectId={project.id}
-          onClose={() => setFormOpen(false)}
+          report={editing}
+          onClose={() => {
+            setFormOpen(false);
+            setEditing(null);
+          }}
           onSaved={() => {
             setFormOpen(false);
+            setEditing(null);
             loadData();
           }}
         />

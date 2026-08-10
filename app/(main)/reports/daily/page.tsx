@@ -57,6 +57,7 @@ export default function DailyReportPage() {
   const [reports, setReports] = useState<DailyReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<DailyReport | null>(null);
   const { canEdit } = useProfile();
 
   async function loadData() {
@@ -92,7 +93,10 @@ export default function DailyReportPage() {
         <div className="flex flex-wrap justify-end gap-2">
           {canEdit && (
             <button
-              onClick={() => setFormOpen(true)}
+              onClick={() => {
+                setEditing(null);
+                setFormOpen(true);
+              }}
               className="rounded-md bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
               Tambah laporan harian
@@ -129,7 +133,7 @@ export default function DailyReportPage() {
                 <th className="px-4 py-3 font-normal">Tim</th>
                 <th className="px-4 py-3 font-normal">Kegiatan</th>
                 <th className="px-4 py-3 font-normal">Status</th>
-                <th className="px-4 py-3 font-normal text-right">Export</th>
+                <th className="px-4 py-3 font-normal text-right">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -145,7 +149,18 @@ export default function DailyReportPage() {
                   <td className="px-4 py-2">{r.tim ?? "-"}</td>
                   <td className="px-4 py-2 max-w-xs truncate">{r.kegiatan}</td>
                   <td className="px-4 py-2 capitalize">{r.status_approval}</td>
-                  <td className="px-4 py-2 text-right space-x-2">
+                  <td className="px-4 py-2 text-right space-x-2 whitespace-nowrap">
+                    {canEdit && (
+                      <button
+                        onClick={() => {
+                          setEditing(r);
+                          setFormOpen(true);
+                        }}
+                        className="text-xs text-brand-blue hover:underline"
+                      >
+                        Edit
+                      </button>
+                    )}
                     <button onClick={() => exportDailyReportPDF(r)} className="text-xs text-brand-blue hover:underline">PDF</button>
                     <button onClick={() => exportDailyReportDocx(r)} className="text-xs text-brand-blue hover:underline">Word</button>
                   </td>
@@ -159,9 +174,14 @@ export default function DailyReportPage() {
       {formOpen && project && (
         <DailyReportForm
           projectId={project.id}
-          onClose={() => setFormOpen(false)}
+          report={editing}
+          onClose={() => {
+            setFormOpen(false);
+            setEditing(null);
+          }}
           onSaved={() => {
             setFormOpen(false);
+            setEditing(null);
             loadData();
           }}
         />

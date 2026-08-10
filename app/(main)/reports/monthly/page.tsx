@@ -63,6 +63,7 @@ export default function MonthlyReportPage() {
   const [reports, setReports] = useState<MonthlyReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<MonthlyReport | null>(null);
   const { canEdit } = useProfile();
 
   async function loadData() {
@@ -100,7 +101,10 @@ export default function MonthlyReportPage() {
         <div className="flex flex-wrap justify-end gap-2">
           {canEdit && (
             <button
-              onClick={() => setFormOpen(true)}
+              onClick={() => {
+                setEditing(null);
+                setFormOpen(true);
+              }}
               className="rounded-md bg-brand-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
             >
               Tambah laporan bulanan
@@ -153,7 +157,7 @@ export default function MonthlyReportPage() {
                 <th className="px-4 py-3 font-normal">Periode</th>
                 <th className="px-4 py-3 font-normal text-right">Rencana</th>
                 <th className="px-4 py-3 font-normal text-right">Realisasi</th>
-                <th className="px-4 py-3 font-normal text-right">Export</th>
+                <th className="px-4 py-3 font-normal text-right">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -168,7 +172,18 @@ export default function MonthlyReportPage() {
                   <td className="px-4 py-2">{BULAN_NAMA[r.bulan - 1]} {r.tahun}</td>
                   <td className="px-4 py-2 text-right">{r.progres_rencana_persen ?? 0}%</td>
                   <td className="px-4 py-2 text-right">{r.progres_realisasi_persen ?? 0}%</td>
-                  <td className="px-4 py-2 text-right space-x-2">
+                  <td className="px-4 py-2 text-right space-x-2 whitespace-nowrap">
+                    {canEdit && (
+                      <button
+                        onClick={() => {
+                          setEditing(r);
+                          setFormOpen(true);
+                        }}
+                        className="text-xs text-brand-blue hover:underline"
+                      >
+                        Edit
+                      </button>
+                    )}
                     <button onClick={() => exportMonthlyReportPDF(r)} className="text-xs text-brand-blue hover:underline">PDF</button>
                     <button onClick={() => exportMonthlyReportDocx(r)} className="text-xs text-brand-blue hover:underline">Word</button>
                   </td>
@@ -182,9 +197,14 @@ export default function MonthlyReportPage() {
       {formOpen && project && (
         <MonthlyReportForm
           projectId={project.id}
-          onClose={() => setFormOpen(false)}
+          report={editing}
+          onClose={() => {
+            setFormOpen(false);
+            setEditing(null);
+          }}
           onSaved={() => {
             setFormOpen(false);
+            setEditing(null);
             loadData();
           }}
         />
